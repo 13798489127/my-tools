@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>PSD 预览工具 - 终极健壮版 · 文本提取</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background: #f1f5f9;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1300px;
+      width: 100%;
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      padding: 28px 32px;
+      color: white;
+    }
+
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-weight: 600;
+      font-size: 1.9rem;
+    }
+
+    .header p {
+      margin: 0;
+      opacity: 0.8;
+    }
+
+    .upload-area {
+      padding: 30px 32px;
+      background: #fefce8;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: center;
+    }
+
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #0f172a;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 60px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .file-label:hover {
+      background: #2d3a5e;
+      transform: scale(0.98);
+    }
+
+    .file-label.disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .status-panel {
+      margin-top: 16px;
+      background: #eef2ff;
+      border-radius: 40px;
+      padding: 8px 20px;
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+    }
+
+    .retry-btn,
+    .manual-retry {
+      background: #3b82f6;
+      border: none;
+      border-radius: 30px;
+      padding: 4px 12px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.7rem;
+    }
+
+    .manual-input {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .manual-input input {
+      padding: 6px 12px;
+      border-radius: 40px;
+      border: 1px solid #cbd5e1;
+      width: 260px;
+    }
+
+    .main-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      padding: 32px;
+      background: #fff;
+    }
+
+    .preview-panel {
+      flex: 1.2;
+      min-width: 260px;
+      background: #f8fafc;
+      border-radius: 24px;
+      padding: 20px;
+      border: 1px solid #eef2ff;
+    }
+
+    .preview-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      border-left: 4px solid #3b82f6;
+      padding-left: 14px;
+    }
+
+    .image-container {
+      background: #eef2ff;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 280px;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .image-container canvas,
+    .image-container img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      background: white;
+    }
+
+    .doc-info {
+      margin-top: 18px;
+      font-size: 0.85rem;
+      background: #f1f5f9;
+      padding: 12px 16px;
+      border-radius: 18px;
+    }
+
+    .layers-panel {
+      flex: 1.8;
+      min-width: 320px;
+      border-radius: 24px;
+      border: 1px solid #eef2ff;
+      overflow: hidden;
+    }
+
+    .layers-header {
+      background: #f8fafc;
+      padding: 16px 20px;
+      font-weight: 600;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .layers-tree {
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 12px 6px 20px 16px;
+      background: white;
+    }
+
+    .layer-item {
+      margin: 8px 0;
+      padding: 10px 12px;
+      background: #fefce8;
+      border-radius: 16px;
+      border-left: 4px solid #cbd5e1;
+      font-size: 0.85rem;
+    }
+
+    .layer-folder {
+      background: #f1f5f9;
+      border-left-color: #f97316;
+      font-weight: 500;
+    }
+
+    .layer-name {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .layer-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: #475569;
+    }
+
+    .badge {
+      background: #e2e8f0;
+      padding: 2px 8px;
+      border-radius: 30px;
+    }
+
+    .loading-placeholder,
+    .error-msg {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+    }
+
+    .error-msg {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-radius: 20px;
+      margin: 16px;
+    }
+
+    /* 新增文本图层面板 */
+    .text-layers-section {
+      padding: 20px 32px 32px 32px;
+      border-top: 1px solid #e2e8f0;
+      background: #fafcff;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      border-left: 4px solid #8b5cf6;
+      padding-left: 14px;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .action-btn {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 30px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #f1f5f9;
+      border-color: #8b5cf6;
+    }
+
+    .table-container {
+      max-height: 300px;
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      background: white;
+    }
+
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .textLayersTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .textLayersTable th {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #8b5cf6;
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+      color: #1e293b;
+    }
+
+    .textLayersTable th:first-child {
+      width: 60px;
+      text-align: center;
+    }
+
+    .textLayersTable td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+
+    .textLayersTable td:first-child {
+      text-align: center;
+      color: #8b5cf6;
+      font-weight: 600;
+      background: #fafafa;
+    }
+
+    .textLayersTable tbody tr {
+      transition: background-color 0.15s ease;
+    }
+
+    .textLayersTable tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .textLayersTable tbody tr:nth-child(even) {
+      background-color: #fafcff;
+    }
+
+    .textLayersTable tbody tr:nth-child(even):hover {
+      background-color: #f1f5f9;
+    }
+
+    .textLayersTable tr:last-child td {
+      border-bottom: none;
+    }
+
+    .no-text-msg {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.7rem;
+      padding: 16px;
+      border-top: 1px solid #eef2ff;
+      color: #64748b;
+    }
+
+    @media (max-width: 760px) {
+      .main-content {
+        flex-direction: column;
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 PSD 智能解析</h1>
+      <p>上传 .psd · 预览图 + 图层结构 + 文本提取</p>
+    </div>
+    <div class="upload-area">
+      <label class="file-label" id="uploadLabel"><span>📁</span> 选择 PSD 文件<input type="file" id="psdUploader"
+          accept=".psd" multiple disabled></label>
+      <div id="batchProgress" style="display:none;" class="status-panel"></div>
+      <div id="statusArea" class="status-panel">⏳ 正在加载解析库...</div>
+      <div id="manualFallback" style="display:none;" class="manual-input"></div>
+    </div>
+    <div class="main-content">
+      <div class="preview-panel">
+        <div class="preview-title">🖼️ 预览</div>
+        <div id="previewContainer" class="image-container">
+          <div class="loading-placeholder">等待库加载后上传文件</div>
+        </div>
+        <div id="docMeta" class="doc-info">📄 就绪</div>
+      </div>
+      <div class="layers-panel">
+        <div class="layers-header"><span>📑 图层结构</span><span id="layersCountBadge" class="layer-count">0</span></div>
+        <div id="layersTree" class="layers-tree">
+          <div class="loading-placeholder">暂无数据</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增文本图层表格区域 -->
+    <div class="text-layers-section">
+      <div class="section-header">
+        <h2>📝 文本图层内容</h2>
+        <div class="table-actions">
+          <button class="action-btn" id="copyTableBtn" title="复制为制表符分隔文本">📋 复制表格</button>
+          <button class="action-btn" id="exportCsvBtn" title="导出为CSV文件">📥 导出 CSV</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table id="textLayersTable" class="textLayersTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <!-- <th>图层名称</th> -->
+              <th>图层内容</th>
+              <th>文件名称</th>
+            </tr>
+          </thead>
+          <tbody id="textLayersBody">
+            <tr>
+              <td colspan="3" class="no-text-msg">暂无文本图层，请上传PSD文件</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 批量解析结果区域 -->
+    <div class="text-layers-section" style="background: #f0fdf4;">
+      <div class="section-header">
+        <h2>📚 批量解析结果</h2>
+        <div class="table-actions">
+          <button class="action-btn" id="copyAllTableBtn" title="复制为制表符分隔文本">📋 复制表格</button>
+          <button class="action-btn" id="exportAllCsvBtn" title="导出所有CSV">📥 导出全部CSV</button>
+          <button class="action-btn" id="clearBatchBtn" title="清空结果">🗑️ 清空</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table id="batchTable" class="textLayersTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>文件名</th>
+              <th>文本内容</th>
+            </tr>
+          </thead>
+          <tbody id="batchTableBody">
+            <tr>
+              <td colspan="3" class="no-text-msg">批量解析结果将显示在这里</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <footer>🔍 psd.js v3.2.0 | 双重加载+手动降级 | 所有处理本地完成</footer>
+  </div>
+
+  <script>
+    (function () {
+      // DOM 元素
+      const fileInput = document.getElementById('psdUploader');
+      const uploadLabel = document.getElementById('uploadLabel');
+      const statusArea = document.getElementById('statusArea');
+      const manualFallbackDiv = document.getElementById('manualFallback');
+      const previewContainer = document.getElementById('previewContainer');
+      const docMetaDiv = document.getElementById('docMeta');
+      const layersTreeDiv = document.getElementById('layersTree');
+      const layersCountSpan = document.getElementById('layersCountBadge');
+      const textLayersBody = document.getElementById('textLayersBody');
+      const copyTableBtn = document.getElementById('copyTableBtn');
+      const exportCsvBtn = document.getElementById('exportCsvBtn');
+      const copyAllTableBtn = document.getElementById('copyAllTableBtn');
+      const exportAllCsvBtn = document.getElementById('exportAllCsvBtn');
+      const clearBatchBtn = document.getElementById('clearBatchBtn');
+
+      let PSDConstructor = null;   // 存储 PSD 构造函数
+      let libReady = false;
+      let currentFileName = '';     // 当前解析的文件名
+      let currentTextData = [];     // 存储提取的文本数据 [{ name, content, fileName }]
+      let batchResults = [];  // 存储批量解析结果
+
+      // 辅助函数
+      function escapeHtml(str) { return String(str || '').replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+
+      function buildLayersHTML(node, depth = 0) {
+        if (!node) return '';
+        const name = node.get ? node.get('name') : (node.name || '未命名');
+        const type = node.get ? node.get('type') : (node.type || 'layer');
+        const isFolder = (type === 'group' || type === 'folder' || (node.children && node.children.length));
+        let w = node.get ? node.get('width') : (node.width || '?'), h = node.get ? node.get('height') : (node.height || '?');
+        let visible = node.get ? node.get('visible') : (node.visible !== undefined ? node.visible : true);
+        let opacity = node.get ? node.get('opacity') : (node.opacity || 1);
+        w = (typeof w === 'number') ? Math.round(w) : w; h = (typeof h === 'number') ? Math.round(h) : h;
+        let html = `<div class="layer-item ${isFolder ? 'layer-folder' : ''}" style="margin-left:${depth * 18}px">
+                            <div class="layer-name">${isFolder ? '📁' : '🎨'} ${escapeHtml(name)}<span class="badge">${isFolder ? '组' : '图层'}</span></div>
+                            <div class="layer-meta"><span>📐 ${w}×${h}</span><span>${visible ? '👁️可见' : '🙈隐藏'}</span><span>🔮 ${Math.round(opacity * 100)}%</span></div>
+                        </div>`;
+        if (node.children && node.children.length) for (let c of node.children) html += buildLayersHTML(c, depth + 1);
+        return html;
+      }
+
+      function countNodes(node) { if (!node) return 0; let c = 1; if (node.children) for (let ch of node.children) c += countNodes(ch); return c; }
+
+      function renderPreview(psd) {
+        return new Promise((resolve, reject) => {
+          try {
+            let canvas = psd.image.toPng();
+            if (!canvas) throw new Error('无预览图');
+            previewContainer.innerHTML = '';
+            canvas.style.cssText = 'max-width:100%;height:auto;border-radius:12px';
+            previewContainer.appendChild(canvas);
+            resolve(canvas);
+          } catch (e) { reject(e); }
+        });
+      }
+
+      function displayDocInfo(psd) {
+        try {
+          let h = psd.header;
+          docMetaDiv.innerHTML = `📏 ${h.width}×${h.height} px &nbsp;|&nbsp;🎨 ${h.mode} &nbsp;|&nbsp;📀 ${h.channels}通道`;
+        } catch (e) { docMetaDiv.innerHTML = '📄 信息读取异常'; }
+      }
+
+      // 递归提取文本图层
+      function extractTextLayers(node, fileName, resultArray) {
+        if (!node) return;
+        // 兼容 export() 对象和原始 node 对象
+        const text = node.text || (node.get && node.get('text'));
+        if (text) {
+          // 获取文本内容：优先 text.value，其次 text.text，最后尝试其他属性
+          let content = '';
+          if (node.text) {
+            if (typeof node.text === 'string') content = node.text;
+            else if (node.text.value) content = node.text.value;
+            else if (node.text.text) content = node.text.text;
+            else if (node.text.content) content = node.text.content;
+          } else if (node.value) {
+            content = node.value;
+          }
+          // 如果内容为空则尝试其他可能
+          if (!content && node.get) {
+            const textObj = node.get('text');
+            if (textObj) content = textObj.value || textObj.text || '';
+          }
+          const name = node.name || (node.get && node.get('name')) || '未命名';
+          resultArray.push({
+            // name: name,
+            content: content || '(无文本内容)',
+            fileName: fileName.replace('psd', '')
+          });
+        }
+        // 递归子节点
+        let children = node.children;
+        if (!children && node._children) children = node._children;
+        if (children && children.length) {
+          for (let child of children) {
+            extractTextLayers(child, fileName, resultArray);
+          }
+        }
+      }
+
+      // 渲染文本表格
+      function renderTextTable(data) {
+        currentTextData = data;
+        if (!data || data.length === 0) {
+          textLayersBody.innerHTML = '<tr><td colspan="4" class="no-text-msg">未检测到文本图层</td></tr>';
+          return;
+        }
+        let html = '';
+        data.forEach((item, index) => {
+          html += `<tr>
+              <td>${index + 1}</td>
+              <!-- <td>${escapeHtml(item.name)}</td> -->
+            <td>${escapeHtml(item.content)}</td>
+            <td>${escapeHtml(item.fileName)}</td>
+          </tr>`;
+        });
+        textLayersBody.innerHTML = html;
+      }
+
+      // 主处理函数
+      function processPsd(psd) {
+        try {
+          renderPreview(psd).catch(e => { previewContainer.innerHTML = `<div class="error-msg">预览失败: ${e.message}</div>`; });
+          displayDocInfo(psd);
+          let tree = psd.tree().export();
+          if (!tree) throw new Error('无图层树');
+          let children = tree.children || [];
+          let html = '', total = 0;
+          for (let ch of children) { html += buildLayersHTML(ch, 0); total += countNodes(ch); }
+          if (!html.trim()) html = '<div class="loading-placeholder">无可见图层</div>';
+          layersTreeDiv.innerHTML = html;
+          layersCountSpan.innerText = total + '个元素';
+
+          // 提取文本图层
+          const textData = [];
+          extractTextLayers(tree, currentFileName, textData);
+          renderTextTable(textData);
+        } catch (e) {
+          layersTreeDiv.innerHTML = `<div class="error-msg">图层解析错误: ${e.message}</div>`;
+          renderTextTable([]);
+        }
+      }
+
+      function loadPsdFromFile(file) {
+        if (!libReady || !PSDConstructor) { statusArea.innerHTML = '⚠️ 解析库未就绪，请等待或重试'; return; }
+        if (!file) return;
+        currentFileName = file.name; // 保存文件名
+        previewContainer.innerHTML = '<div class="loading-placeholder">⏳ 解析中...</div>';
+        layersTreeDiv.innerHTML = '<div class="loading-placeholder">⏳ 解析图层...</div>';
+        docMetaDiv.innerHTML = '📄 解析中...';
+        textLayersBody.innerHTML = '<tr><td colspan="3" class="loading-placeholder">⏳ 提取文本中...</td></tr>';
+        const reader = new FileReader();
+        reader.onload = e => {
+          const buf = new Uint8Array(e.target.result);
+          try {
+            let psdInst;
+            if (typeof PSDConstructor.parse === 'function') psdInst = PSDConstructor.parse(buf);
+            else { psdInst = new PSDConstructor(buf); psdInst.parse(); }
+            processPsd(psdInst);
+          } catch (err) {
+            previewContainer.innerHTML = `<div class="error-msg">❌ ${err.message}</div>`;
+            layersTreeDiv.innerHTML = '<div class="error-msg">解析失败</div>';
+            renderTextTable([]);
+          }
+        };
+        reader.onerror = () => {
+          previewContainer.innerHTML = '<div class="error-msg">文件读取失败</div>';
+          renderTextTable([]);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      // 批量处理文件
+      async function batchProcessFiles(files) {
+        const batchProgress = document.getElementById('batchProgress');
+        const batchTableBody = document.getElementById('batchTableBody');
+        batchProgress.style.display = 'flex';
+        batchResults = [];
+        batchTableBody.innerHTML = '';
+
+        const total = files.length;
+        let completed = 0;
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          batchProgress.innerHTML = `⏳ 解析中 ${i + 1}/${total}: ${file.name}`;
+
+          try {
+            const textData = await parseSingleFile(file);
+            textData.forEach(item => {
+              batchResults.push({
+                fileName: file.name.replace('.psd', ''),
+                content: item.content
+              });
+            });
+          } catch (err) {
+            console.error(`解析失败: ${file.name}`, err);
+          }
+
+          completed++;
+        }
+
+        batchProgress.innerHTML = `✅ 批量解析完成！共 ${batchResults.length} 条文本`;
+        renderBatchTable();
+      }
+
+      function parseSingleFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const buf = new Uint8Array(e.target.result);
+            try {
+              let psdInst;
+              if (typeof PSDConstructor.parse === 'function') psdInst = PSDConstructor.parse(buf);
+              else { psdInst = new PSDConstructor(buf); psdInst.parse(); }
+
+              const tree = psdInst.tree().export();
+              const textData = [];
+              extractTextLayers(tree, file.name, textData);
+              resolve(textData);
+            } catch (err) {
+              reject(err);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      function renderBatchTable() {
+        const batchTableBody = document.getElementById('batchTableBody');
+        if (batchResults.length === 0) {
+          batchTableBody.innerHTML = '<tr><td colspan="3" class="no-text-msg">未检测到文本图层</td></tr>';
+          return;
+        }
+        let html = '';
+        batchResults.forEach((item, index) => {
+          html += `<tr><td>${index + 1}</td><td>${escapeHtml(item.fileName)}</td><td>${escapeHtml(item.content)}</td></tr>`;
+        });
+        batchTableBody.innerHTML = html;
+      }
+
+      // 导出全部CSV
+      function exportAllCsv() {
+        if (batchResults.length === 0) {
+          alert('没有数据可导出');
+          return;
+        }
+        const headers = ['序号', '文件名', '文本内容'];
+        const rows = batchResults.map((item, index) => [index + 1, item.fileName, item.content]);
+        const csvContent = [headers, ...rows]
+          .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+          .join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `batch_text_layers_${new Date().getTime()}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+         // 复制表格数据（制表符分隔，可直接粘贴到Excel）
+      function copyAllTableData() {
+        if (!batchResults || batchResults.length === 0) {
+          alert('没有文本数据可复制');
+          return;
+        }
+        const headers = ['序号', '图层内容', '文件名称'];
+        const rows = batchResults.map((item, index) => [index + 1, item.content, item.fileName]);
+        const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n');
+        navigator.clipboard.writeText(tsv).then(() => {
+          alert('表格已复制（制表符分隔）');
+        }).catch(err => {
+          alert('复制失败: ' + err);
+        });
+      }
+
+      // 清空批量结果
+      function clearBatchResults() {
+        batchResults = [];
+        document.getElementById('batchTableBody').innerHTML = '<tr><td colspan="3" class="no-text-msg">批量解析结果将显示在这里</td></tr>';
+        document.getElementById('batchProgress').style.display = 'none';
+        document.getElementById('batchProgress').innerHTML = '';
+      }
+
+      // 核心：加载脚本并验证全局变量 PSD
+      function loadScriptAndVerify(src, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => {
+            window.PSD = require('psd');
+            let start = Date.now();
+            let checkInterval = setInterval(() => {
+              if (window.PSD) {
+                clearInterval(checkInterval);
+                resolve(window.PSD);
+              } else if (Date.now() - start > timeout) {
+                clearInterval(checkInterval);
+                reject(new Error(`加载后未找到 window.PSD (${src})`));
+              }
+            }, 100);
+          };
+          script.onerror = () => reject(new Error(`脚本加载失败 ${src}`));
+          document.head.appendChild(script);
+        });
+      }
+
+      // 尝试主备CDN
+      const CDNS = [
+        './psd.min.js',
+        'https://cdn.jsdelivr.net/npm/browser-psd@3.2.9/dist/psd.min.js',
+        'https://cdn.jsdelivr.net/npm/psd.js@3.2.0/dist/psd.min.js',
+        'https://unpkg.com/psd.js@3.2.0/dist/psd.min.js'
+      ];
+      async function tryLoadLibraries() {
+        statusArea.innerHTML = '⏳ 尝试加载 psd.js ...';
+        uploadLabel.classList.add('disabled');
+        fileInput.disabled = true;
+        for (let i = 0; i < CDNS.length; i++) {
+          try {
+            const PSDLib = await loadScriptAndVerify(CDNS[i], 6000);
+            PSDConstructor = PSDLib;
+            libReady = true;
+            statusArea.innerHTML = `✅ 解析库加载成功 (${CDNS[i]}) <button class="retry-btn" id="forceReloadLib">重新加载</button>`;
+            uploadLabel.classList.remove('disabled');
+            fileInput.disabled = false;
+            manualFallbackDiv.style.display = 'none';
+            const reloadBtn = document.getElementById('forceReloadLib');
+            if (reloadBtn) reloadBtn.onclick = () => { resetAndReload(); };
+            return true;
+          } catch (err) {
+            console.warn(`CDN ${CDNS[i]} 失败:`, err);
+            statusArea.innerHTML = `⚠️ ${CDNS[i]} 失败，尝试下一个...`;
+          }
+        }
+        statusArea.innerHTML = `❌ 所有CDN加载失败。可手动输入有效地址或重试。`;
+        manualFallbackDiv.style.display = 'flex';
+        manualFallbackDiv.innerHTML = `
+                <input type="text" id="manualCdnInput" placeholder="输入 psd.min.js 的URL" value="https://cdn.jsdelivr.net/npm/psd.js@3.2.0/dist/psd.min.js">
+                <button class="manual-retry" id="manualRetryBtn">手动加载</button>
+                <button class="retry-btn" id="retryDefault">重试默认CDN</button>
+            `;
+        document.getElementById('manualRetryBtn')?.addEventListener('click', () => {
+          const url = document.getElementById('manualCdnInput').value.trim();
+          if (url) loadSingleCdnManual(url);
+        });
+        document.getElementById('retryDefault')?.addEventListener('click', () => {
+          resetAndReload();
+        });
+        return false;
+      }
+
+      async function loadSingleCdnManual(url) {
+        statusArea.innerHTML = `⏳ 手动加载 ${url} ...`;
+        try {
+          const PSDLib = await loadScriptAndVerify(url, 8000);
+          PSDConstructor = PSDLib;
+          libReady = true;
+          statusArea.innerHTML = `✅ 手动加载成功！<button class="retry-btn" id="forceReloadLib2">重新加载</button>`;
+          uploadLabel.classList.remove('disabled');
+          fileInput.disabled = false;
+          manualFallbackDiv.style.display = 'none';
+          const rb = document.getElementById('forceReloadLib2');
+          if (rb) rb.onclick = () => resetAndReload();
+        } catch (err) {
+          statusArea.innerHTML = `❌ 手动加载失败: ${err.message}`;
+        }
+      }
+
+      function resetAndReload() {
+        delete window.PSD;
+        PSDConstructor = null;
+        libReady = false;
+        uploadLabel.classList.add('disabled');
+        fileInput.disabled = true;
+        manualFallbackDiv.style.display = 'none';
+        statusArea.innerHTML = '⏳ 重新加载解析库...';
+        tryLoadLibraries();
+      }
+
+      // 复制表格数据（制表符分隔，可直接粘贴到Excel）
+      function copyTableData() {
+        if (!currentTextData || currentTextData.length === 0) {
+          alert('没有文本数据可复制');
+          return;
+        }
+        const headers = ['序号', '图层内容', '文件名称'];
+        const rows = currentTextData.map((item, index) => [index + 1, item.content, item.fileName]);
+        const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n');
+        navigator.clipboard.writeText(tsv).then(() => {
+          alert('表格已复制（制表符分隔）');
+        }).catch(err => {
+          alert('复制失败: ' + err);
+        });
+      }
+
+      // 导出CSV
+      function exportCsv() {
+        if (!currentTextData || currentTextData.length === 0) {
+          alert('没有文本数据可导出');
+          return;
+        }
+        const headers = ['序号', '图层内容', '文件名称'];
+        const rows = currentTextData.map((item, index) => [index + 1, item.content, item.fileName]);
+        const csvContent = [headers, ...rows]
+          .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+          .join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Chinese
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `text_layers_${currentFileName.replace(/\.psd$/i, '')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      // 绑定复制/导出按钮事件
+      copyTableBtn.addEventListener('click', copyTableData);
+      exportCsvBtn.addEventListener('click', exportCsv);
+
+
+      exportAllCsvBtn.addEventListener('click', exportAllCsv);
+      clearBatchBtn.addEventListener('click', clearBatchResults);
+      copyAllTableBtn.addEventListener('click', copyAllTableData);
+
+      // 文件上传事件
+      fileInput.addEventListener('change', e => {
+        if (!libReady) {
+          statusArea.innerHTML = '⚠️ 解析库未就绪';
+          return;
+        }
+        if (e.target.files && e.target.files.length > 0) {
+          if (e.target.files.length === 1) {
+            loadPsdFromFile(e.target.files[0]);
+          } else {
+            batchProcessFiles(e.target.files);
+          }
+        }
+      });
+
+      // 拖放支持
+      const zone = document.querySelector('.container');
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+      ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, () => zone.style.boxShadow = '0 0 0 3px #3b82f6'));
+      ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, () => zone.style.boxShadow = '0 20px 35px -12px rgba(0,0,0,0.15)'));
+      zone.addEventListener('drop', e => {
+        const f = e.dataTransfer.files[0];
+        if (f && f.name.toLowerCase().endsWith('.psd')) {
+          if (libReady) loadPsdFromFile(f);
+          else statusArea.innerHTML = '⚠️ 库未就绪，请等待重试';
+        } else if (f) alert('请拖放 .psd 文件');
+      });
+
+      // 启动
+      tryLoadLibraries();
+    })();
+  </script>
+</body>
+
+</html>
