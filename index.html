@@ -32,6 +32,81 @@
 
         .header p {
             color: #5d6570;
+            margin-bottom: 16px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: #0969da;
+            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+        }
+
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: #5d6570;
+        }
+
+        .tree {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .tree-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            background: #fafbfc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tree-header h2 {
+            font-size: 16px;
+            color: #1a1e24;
+            margin: 0;
+        }
+
+        .tree-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tree-action-btn {
+            background: none;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #5d6570;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tree-action-btn:hover {
+            background: #f6f8fa;
+            border-color: #afb8c1;
         }
 
         .tree {
@@ -67,6 +142,20 @@
         .tree .folder {
             color: #c97f25;
             font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tree .folder:hover {
+            background: #fff8e6;
+        }
+
+        .tree .folder.collapsed::before {
+            content: '📂';
+        }
+
+        .tree .folder.expanded::before {
+            content: '📁';
         }
 
         .tree .file {
@@ -76,6 +165,36 @@
         .tree .indent {
             width: 20px;
             display: inline-block;
+        }
+
+        .tree ul ul {
+            margin-left: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .tree .collapsed + ul {
+            display: none;
+        }
+
+        .tree .expanded + ul {
+            display: block;
+        }
+
+        .tree .hidden {
+            display: none;
+        }
+
+        .tree .highlight {
+            background: #fff8c5;
+            border-radius: 2px;
+            padding: 1px 2px;
+        }
+
+        .no-results {
+            padding: 40px 20px;
+            text-align: center;
+            color: #5d6570;
+            font-style: italic;
         }
 
         .footer {
@@ -92,10 +211,25 @@
     <div class="header">
         <h1>🏠 项目快捷导航</h1>
         <p>自动读取目录，点击即可访问</p>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索项目名称..." />
+        </div>
     </div>
 
     <div class="tree">
-        <ul id="menu"></ul>
+        <div class="tree-header">
+            <h2>📂 项目目录</h2>
+            <div class="tree-actions">
+                <button class="tree-action-btn" id="expandAll">展开全部</button>
+                <button class="tree-action-btn" id="collapseAll">收起全部</button>
+            </div>
+        </div>
+        <div style="padding: 0 20px 20px;">
+            <ul id="menu"></ul>
+            <div id="noResults" class="no-results" style="display: none;">
+                没有找到匹配的项目
+            </div>
+        </div>
     </div>
 
     <div class="footer">
@@ -107,37 +241,166 @@
         const structure = [
             //   { type: 'file', name: 'psd.html', path: './psd.html' },
             {
+                type: 'folder', name: '表格工具', children: [
+                    { type: 'file', name: '工作表拆分工具', path: './excelTools/工作表拆分工具.html' },
+                    { type: 'file', name: 'JSON转表格工具', path: './excelTools/JSON转表格工具.html' },
+                ]
+            },
+            {
                 type: 'folder', name: '工具', children: [
-                    { type: 'file', name: 'psd解析器.html', path: './psdTools/PSD 图层结构解析器.html' },
-
+                    { type: 'file', name: 'psd解析器', path: './tools/PSD 图层结构解析器.html' },
+                    { type: 'file', name: '图片排版工具', path: './tools/图片排版工具.html' },
                 ]
             }
         ];
 
         // 生成菜单
         const root = document.getElementById('menu');
-        function buildList(list, data, depth = 0) {
-            data.forEach(item => {
+        const searchInput = document.getElementById('searchInput');
+        const expandAllBtn = document.getElementById('expandAll');
+        const collapseAllBtn = document.getElementById('collapseAll');
+        const noResultsDiv = document.getElementById('noResults');
+        
+        let allItems = [];
+        
+        function buildList(list, data, depth = 0, parentId = '') {
+            data.forEach((item, index) => {
                 const li = document.createElement('li');
+                const itemId = parentId ? `${parentId}-${index}` : `item-${index}`;
                 const indent = '<span class="indent"></span>'.repeat(depth);
 
                 if (item.type === 'folder') {
                     li.innerHTML = `
             ${indent}
-            <a class="folder">📁 ${item.name}</a>
+            <a class="folder expanded" data-id="${itemId}">${item.name}</a>
             <ul></ul>
           `;
                     list.appendChild(li);
-                    buildList(li.querySelector('ul'), item.children, depth + 1);
+                    const folderLink = li.querySelector('.folder');
+                    const childUl = li.querySelector('ul');
+                    
+                    folderLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        toggleFolder(folderLink, childUl);
+                    });
+                    
+                    buildList(childUl, item.children, depth + 1, itemId);
+                    
+                    allItems.push({
+                        element: folderLink,
+                        name: item.name,
+                        type: 'folder',
+                        id: itemId
+                    });
                 } else {
                     li.innerHTML = `
             ${indent}
-            <a class="file" href="${item.path}" target="_blank">📄 ${item.name}</a>
+            <a class="file" href="${item.path}" target="_blank">${item.name}</a>
           `;
                     list.appendChild(li);
+                    const fileLink = li.querySelector('.file');
+                    
+                    allItems.push({
+                        element: fileLink,
+                        name: item.name,
+                        type: 'file',
+                        id: itemId
+                    });
                 }
             });
         }
+
+        function toggleFolder(folderLink, childUl) {
+            if (folderLink.classList.contains('collapsed')) {
+                folderLink.classList.remove('collapsed');
+                folderLink.classList.add('expanded');
+                childUl.style.display = 'block';
+            } else {
+                folderLink.classList.remove('expanded');
+                folderLink.classList.add('collapsed');
+                childUl.style.display = 'none';
+            }
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.folder.collapsed').forEach(folder => {
+                folder.classList.remove('collapsed');
+                folder.classList.add('expanded');
+                folder.nextElementSibling.style.display = 'block';
+            });
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('.folder.expanded').forEach(folder => {
+                folder.classList.remove('expanded');
+                folder.classList.add('collapsed');
+                folder.nextElementSibling.style.display = 'none';
+            });
+        }
+
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            // 安全转义正则表达式特殊字符
+            const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+            // 使用全局替换，高亮所有匹配项
+            return text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
+        }
+
+        function searchItems(searchTerm) {
+            if (!searchTerm) {
+                allItems.forEach(item => {
+                    item.element.closest('li').classList.remove('hidden');
+                    item.element.innerHTML = item.name;
+                });
+                noResultsDiv.style.display = 'none';
+                return;
+            }
+            
+            const hasResults = allItems.some(item => {
+                const isMatch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const itemElement = item.element.closest('li');
+                
+                if (isMatch) {
+                    itemElement.classList.remove('hidden');
+                    // 高亮匹配文本
+                    const originalText = item.name;
+                    item.element.innerHTML = highlightText(originalText, searchTerm);
+                    
+                    // 展开所有父级文件夹
+                    let parentFolder = itemElement.parentElement.closest('li');
+                    while (parentFolder) {
+                        const folderLink = parentFolder.querySelector('.folder');
+                        if (folderLink && folderLink.classList.contains('collapsed')) {
+                            toggleFolder(folderLink, folderLink.nextElementSibling);
+                        }
+                        parentFolder = parentFolder.parentElement.closest('li');
+                    }
+                } else {
+                    itemElement.classList.add('hidden');
+                    // 恢复原始文本
+                    item.element.innerHTML = item.name;
+                }
+                
+                return isMatch;
+            });
+            
+            noResultsDiv.style.display = hasResults ? 'none' : 'block';
+        }
+
+        // 事件监听
+         searchInput.addEventListener('input', (e) => {
+             const searchTerm = e.target.value.trim();
+             
+             // 防抖处理，避免频繁搜索
+             clearTimeout(searchInput.debounceTimer);
+             searchInput.debounceTimer = setTimeout(() => {
+                 searchItems(searchTerm);
+             }, 300);
+         });
+
+        expandAllBtn.addEventListener('click', expandAll);
+        collapseAllBtn.addEventListener('click', collapseAll);
 
         buildList(root, structure);
     </script>

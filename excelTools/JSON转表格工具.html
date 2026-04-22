@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>📋 JSON 表格预览 · 固定表头 · 筛选排序导出</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f0f4fa;
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+        }
+        .app-container {
+            max-width: 1600px;
+            width: 100%;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0, 20, 40, 0.06);
+            padding: 24px 28px;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            color: #0b2b4a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #4a657d;
+            margin-bottom: 20px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            font-weight: 400;
+        }
+        .json-input-area {
+            background: #f9fcff;
+            border-radius: 18px;
+            padding: 18px 20px;
+            border: 1px solid #dde5ed;
+            margin-bottom: 22px;
+        }
+        .json-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 16px 18px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            border: 1.5px solid #ccdae8;
+            border-radius: 20px;
+            background: white;
+            resize: vertical;
+            outline: none;
+            transition: 0.15s;
+        }
+        textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .btn {
+            background: white;
+            border: 1.5px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: #1e293b;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .btn-primary {
+            background: #1e3a5f;
+            border-color: #1e3a5f;
+            color: white;
+            box-shadow: 0 6px 10px rgba(30,58,95,0.1);
+        }
+        .btn-primary:hover {
+            background: #143048;
+        }
+        .btn-outline-blue {
+            border-color: #bdd3f0;
+            background: #f5f9ff;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin: 18px 0 14px;
+        }
+        .search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fafcff;
+            padding: 4px 10px 4px 18px;
+            border-radius: 40px;
+            border: 1px solid #d7e2ee;
+        }
+        .search-wrapper i {
+            color: #6b85a0;
+        }
+        #search-input {
+            border: none;
+            background: transparent;
+            padding: 8px 6px 8px 0;
+            font-size: 0.95rem;
+            width: 220px;
+            outline: none;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 8px;
+        }
+        .table-container {
+            border: 1px solid #e2eaf2;
+            border-radius: 20px;
+            background: white;
+            overflow: auto;
+            max-height: 520px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            margin-top: 8px;
+            position: relative;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+            min-width: 600px;
+        }
+        th {
+            position: sticky;
+            top: 0;
+            background: #eef3fc;
+            color: #1e3a5f;
+            font-weight: 600;
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 2px solid #cbddec;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            z-index: 10;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        th:hover {
+            background: #e0eaf6;
+        }
+        th i {
+            margin-left: 6px;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e9eef4;
+            white-space: nowrap;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        tr:hover td {
+            background: #f6faff;
+        }
+        .index-col {
+            font-weight: 500;
+            color: #4f6f8f;
+            background: #fafdff;
+        }
+        .footer-bar {
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .stats {
+            color: #436684;
+            font-size: 0.9rem;
+        }
+        .sort-indicator {
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        /* 简单icon模拟 */
+        .fa, .fas { font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+        .far { font-weight: 400; }
+        @media (max-width: 700px) {
+            body { padding: 12px; }
+            .app-container { padding: 16px; }
+        }
+    </style>
+    <!-- Font Awesome (用于图标) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="app-container">
+    <h1>
+        <i class="fas fa-table" style="color:#2563eb;"></i> 
+        JSON 表格预览 · 固定表头
+        <span style="font-size:0.9rem; font-weight:400; margin-left:auto; background:#eef3fa; padding:4px 14px; border-radius:40px;">
+            <i class="far fa-file-code"></i> 对象数组
+        </span>
+    </h1>
+    <div class="subtitle">粘贴 JSON 数组 → 自动组合所有 key 为表头 · 支持筛选/排序/序号/复制/导出</div>
+
+    <!-- JSON 输入区 -->
+    <div class="json-input-area">
+        <div class="json-header">
+            <span style="font-weight:600; color:#1e3a5f;"><i class="far fa-keyboard"></i> 数据源 (对象数组)</span>
+            <div class="button-group">
+                <button class="btn btn-outline-blue" id="sample-btn"><i class="far fa-file"></i> 加载示例</button>
+                <button class="btn btn-primary" id="apply-btn"><i class="fas fa-sync-alt"></i> 应用并刷新表格</button>
+            </div>
+        </div>
+        <textarea id="json-input" placeholder='[ { "id": 1, "name": "张三", "age": 28 }, { "id": 2, "name": "李四", "age": 32 } ]'>[
+  { "id": 1, "name": "张三", "department": "产品部", "salary": 12000 },
+  { "id": 2, "name": "李四", "department": "研发部", "salary": 15000, "city": "北京" },
+  { "id": 3, "name": "王五", "department": "市场部", "salary": 13000, "city": "上海" },
+  { "id": 4, "name": "赵六", "department": "研发部", "salary": 16000, "level": "P2" }
+]</textarea>
+        <div style="font-size:0.8rem; color:#5f7d9c; margin-top:6px;"><i class="far fa-lightbulb"></i> 支持不规则结构，会自动合并所有字段作为列。点击表头排序，搜索框全局筛选。</div>
+    </div>
+
+    <!-- 工具栏：搜索、序号列、复制/导出 -->
+    <div class="toolbar">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div class="search-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-input" placeholder="筛选表格 (任意文本)" autocomplete="off">
+                <button class="btn btn-sm" id="clear-search" style="border:none; background:transparent; padding:4px 8px;" title="清除">✕</button>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="add-index-col" checked> 
+                <label for="add-index-col"><i class="far fa-list-ol"></i> 显示序号列</label>
+            </div>
+        </div>
+        <div class="button-group">
+            <button class="btn" id="copy-table-btn"><i class="far fa-copy"></i> 复制表格</button>
+            <button class="btn btn-outline-blue" id="export-csv-btn"><i class="fas fa-download"></i> 导出 CSV</button>
+        </div>
+    </div>
+
+    <!-- 表格容器 (固定表头) -->
+    <div class="table-container" id="table-wrapper">
+        <table id="data-table">
+            <thead id="table-header">
+                <!-- 动态生成 -->
+            </thead>
+            <tbody id="table-body">
+                <!-- 动态数据 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 底部状态 -->
+    <div class="footer-bar">
+        <div class="stats" id="stats-info">共 0 行数据 (筛选后)</div>
+        <div style="display:flex; gap:10px;">
+            <span style="font-size:0.8rem; color:#6b85a0;"><i class="far fa-arrow-up"></i><i class="far fa-arrow-down"></i> 点击表头排序</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // ---------- 全局状态 ----------
+        let originalData = [];            // 原始对象数组
+        let currentColumns = [];          // 当前显示的列 (key数组)
+        let filteredData = [];            // 经过筛选后的数据
+        let sortState = { column: null, direction: 'asc' }; // 'asc', 'desc', null
+        
+        // DOM 元素
+        const jsonInput = document.getElementById('json-input');
+        const applyBtn = document.getElementById('apply-btn');
+        const sampleBtn = document.getElementById('sample-btn');
+        const searchInput = document.getElementById('search-input');
+        const clearSearchBtn = document.getElementById('clear-search');
+        const addIndexCheck = document.getElementById('add-index-col');
+        const tableHeader = document.getElementById('table-header');
+        const tableBody = document.getElementById('table-body');
+        const statsInfo = document.getElementById('stats-info');
+        const copyTableBtn = document.getElementById('copy-table-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        
+        // ---------- 辅助函数：解析JSON ----------
+        function parseJSONInput(str) {
+            try {
+                const trimmed = str.trim();
+                if (!trimmed) return [];
+                // 使用 Function 构造器或 JSON.parse，更安全用 JSON.parse
+                const parsed = JSON.parse(trimmed);
+                if (!Array.isArray(parsed)) {
+                    alert('数据必须是对象数组 (数组格式)');
+                    return null;
+                }
+                // 过滤掉非对象元素
+                return parsed.filter(item => item && typeof item === 'object' && !Array.isArray(item));
+            } catch (e) {
+                alert('JSON 解析错误: ' + e.message);
+                return null;
+            }
+        }
+
+        // ---------- 提取所有可能的键 (组合所有对象的key) ----------
+        function getAllKeys(data) {
+            const keySet = new Set();
+            data.forEach(obj => {
+                Object.keys(obj).forEach(key => keySet.add(key));
+            });
+            return Array.from(keySet).sort(); // 排序让表头稳定
+        }
+
+        // ---------- 获取单元格显示值 (处理null/undefined/对象) ----------
+        function getCellValue(obj, key) {
+            const val = obj[key];
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'object') {
+                return JSON.stringify(val);
+            }
+            return String(val);
+        }
+
+        // ---------- 筛选逻辑 (全局文本匹配) ----------
+        function filterData(data, columns, searchTerm) {
+            if (!searchTerm.trim()) return data.slice();
+            const term = searchTerm.trim().toLowerCase();
+            return data.filter(obj => {
+                return columns.some(col => {
+                    const cellText = getCellValue(obj, col).toLowerCase();
+                    return cellText.includes(term);
+                });
+            });
+        }
+
+        // ---------- 排序逻辑 ----------
+        function sortData(data, column, direction) {
+            if (!column || !direction) return data.slice();
+            const sorted = data.slice();
+            sorted.sort((a, b) => {
+                let valA = getCellValue(a, column);
+                let valB = getCellValue(b, column);
+                
+                // 尝试数字比较
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+                const isNumber = !isNaN(numA) && !isNaN(numB) && isFinite(numA) && isFinite(numB);
+                
+                let compareResult;
+                if (isNumber) {
+                    compareResult = numA - numB;
+                } else {
+                    compareResult = valA.localeCompare(valB, 'zh-CN');
+                }
+                return direction === 'asc' ? compareResult : -compareResult;
+            });
+            return sorted;
+        }
+
+        // ---------- 渲染表格 (完全基于状态) ----------
+        function renderTable() {
+            // 获取筛选后数据并排序
+            const searchTerm = searchInput.value;
+            let displayData = filterData(originalData, currentColumns, searchTerm);
+            
+            // 应用排序
+            if (sortState.column && sortState.direction) {
+                displayData = sortData(displayData, sortState.column, sortState.direction);
+            }
+            filteredData = displayData;
+            
+            const showIndex = addIndexCheck.checked;
+            
+            // 生成表头
+            let headerHtml = '';
+            if (showIndex) {
+                headerHtml += `<th style="width:60px; cursor:default;">#</th>`;
+            }
+            currentColumns.forEach(col => {
+                const isSorted = sortState.column === col;
+                const sortIcon = isSorted ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : '';
+                headerHtml += `<th data-column="${col}" title="点击排序">${col}${sortIcon}</th>`;
+            });
+            tableHeader.innerHTML = headerHtml;
+            
+            // 生成表体
+            let bodyHtml = '';
+            if (displayData.length === 0) {
+                const colspan = showIndex ? currentColumns.length + 1 : currentColumns.length;
+                bodyHtml = `<tr><td colspan="${colspan}" style="text-align:center; padding:40px; color:#7a95b0;">暂无数据 / 无匹配结果</td></tr>`;
+            } else {
+                displayData.forEach((obj, idx) => {
+                    bodyHtml += '<tr>';
+                    if (showIndex) {
+                        bodyHtml += `<td class="index-col">${idx + 1}</td>`;
+                    }
+                    currentColumns.forEach(col => {
+                        const val = getCellValue(obj, col);
+                        bodyHtml += `<td title="${val.replace(/"/g, '&quot;')}">${val}</td>`;
+                    });
+                    bodyHtml += '</tr>';
+                });
+            }
+            tableBody.innerHTML = bodyHtml;
+            
+            // 更新统计
+            statsInfo.textContent = `共 ${displayData.length} 行 (总计 ${originalData.length} 条原始数据)`;
+            
+            // 重新绑定表头点击事件 (事件委托)
+        }
+
+        // ---------- 表头点击排序 (事件委托) ----------
+        tableHeader.addEventListener('click', (e) => {
+            const th = e.target.closest('th');
+            if (!th) return;
+            const column = th.dataset.column;
+            if (!column) return; // 序号列
+            
+            if (sortState.column === column) {
+                // 循环: asc -> desc -> 取消排序
+                if (sortState.direction === 'asc') {
+                    sortState.direction = 'desc';
+                } else if (sortState.direction === 'desc') {
+                    sortState.column = null;
+                    sortState.direction = null;
+                }
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+            renderTable();
+        });
+
+        // ---------- 刷新全部：解析JSON -> 提取列 -> 重置排序 -> 渲染 ----------
+        function refreshFromJSON() {
+            const raw = jsonInput.value;
+            const parsed = parseJSONInput(raw);
+            if (parsed === null) return;
+            
+            originalData = parsed;
+            if (originalData.length === 0) {
+                currentColumns = [];
+                sortState = { column: null, direction: null };
+                renderTable();
+                return;
+            }
+            
+            // 提取所有键
+            currentColumns = getAllKeys(originalData);
+            
+            // 重置排序 (不清除搜索)
+            sortState = { column: null, direction: null };
+            
+            renderTable();
+        }
+
+        // ---------- 事件绑定 ----------
+        applyBtn.addEventListener('click', refreshFromJSON);
+        
+        sampleBtn.addEventListener('click', () => {
+            const sample = `[
+  { "id": 1, "name": "张三", "department": "产品部", "salary": 12000, "city": "深圳" },
+  { "id": 2, "name": "李四", "department": "研发部", "salary": 15000, "city": "北京" },
+  { "id": 3, "name": "王五", "department": "市场部", "salary": 13000, "city": "上海", "level": "P1" },
+  { "id": 4, "name": "赵六", "department": "研发部", "salary": 16000, "level": "P2", "city": "杭州" },
+  { "id": 5, "name": "孙七", "department": "产品部", "salary": 14000 }
+]`;
+            jsonInput.value = sample;
+            refreshFromJSON();
+        });
+
+        // 搜索输入
+        searchInput.addEventListener('input', () => {
+            // 重置排序? 通常保留排序，但可以保留。仅重新渲染
+            renderTable();
+        });
+        
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            renderTable();
+        });
+
+        // 序号列切换
+        addIndexCheck.addEventListener('change', renderTable);
+
+        // ---------- 复制表格 (HTML格式 + 纯文本) ----------
+        function getTableText(includeHeader = true) {
+            const showIndex = addIndexCheck.checked;
+            let rows = [];
+            
+            // 表头
+            if (includeHeader) {
+                let headerRow = [];
+                if (showIndex) headerRow.push('#');
+                headerRow.push(...currentColumns);
+                rows.push(headerRow.join('\t'));
+            }
+            
+            // 数据
+            filteredData.forEach((obj, idx) => {
+                let row = [];
+                if (showIndex) row.push(idx + 1);
+                currentColumns.forEach(col => {
+                    row.push(getCellValue(obj, col));
+                });
+                rows.push(row.join('\t'));
+            });
+            return rows.join('\n');
+        }
+
+        copyTableBtn.addEventListener('click', async () => {
+            if (filteredData.length === 0 && currentColumns.length === 0) {
+                alert('没有数据可复制');
+                return;
+            }
+            const text = getTableText(true);
+            try {
+                await navigator.clipboard.writeText(text);
+                alert('✅ 表格已复制 (制表符分隔)');
+            } catch (err) {
+                // 降级
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('✅ 表格已复制');
+            }
+        });
+
+        // ---------- 导出 CSV ----------
+        function downloadCSV(content, filename) {
+            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' }); // BOM for Chinese
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        exportCsvBtn.addEventListener('click', () => {
+            if (filteredData.length === 0 && currentColumns.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+            const csvText = getTableText(true);
+            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+            downloadCSV(csvText, `table_export_${timestamp}.csv`);
+        });
+
+        // ---------- 初始化：加载默认示例 ----------
+        (function initialize() {
+            // 使用默认textarea内容
+            refreshFromJSON();
+        })();
+
+        // 额外优化：调整表格容器滚动时保持表头 (sticky已做)
+        // 修复空状态
+    })();
+</script>
+<!-- 确保图标库已加载 -->
+</body>
+</html>
