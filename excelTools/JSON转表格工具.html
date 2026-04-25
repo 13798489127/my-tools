@@ -79,6 +79,78 @@
             flex-wrap: wrap;
             margin-top: 8px;
         }
+
+        .column-selector {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            margin: 16px 0;
+        }
+
+        .column-selector-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .column-selector-title {
+            font-weight: 600;
+            color: #1e3a5f;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .column-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 8px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .column-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .column-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #2563eb;
+        }
+
+        .column-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-small {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-small:hover {
+            background: #f1f5f9;
+        }
+
         .btn {
             background: white;
             border: 1.5px solid #cbd5e1;
@@ -222,6 +294,8 @@
     </style>
     <!-- Font Awesome (用于图标) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- SheetJS (用于Excel导出) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app-container">
@@ -252,6 +326,29 @@
         <div style="font-size:0.8rem; color:#5f7d9c; margin-top:6px;"><i class="far fa-lightbulb"></i> 支持不规则结构，会自动合并所有字段作为列。点击表头排序，搜索框全局筛选。</div>
     </div>
 
+    <!-- 列选择器 -->
+    <div class="column-selector" id="column-selector" style="display: none;">
+        <div class="column-selector-header">
+            <div class="column-selector-title">
+                <i class="fas fa-columns"></i>
+                <span>列选择器</span>
+                <span id="selected-count" style="font-size:0.8rem; color:#64748b; margin-left:8px;">(0/0)</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-small" id="select-all-btn">全选</button>
+                <button class="btn-small" id="select-none-btn">全不选</button>
+            </div>
+        </div>
+        <div class="column-list" id="column-list">
+            <div style="color:#64748b; font-style:italic; padding:20px; text-align:center;">请先加载数据</div>
+        </div>
+        <div class="column-actions">
+            <button class="btn-small" id="copy-columns-btn">📋 复制列名</button>
+            <button class="btn-small" id="export-columns-btn">📥 导出列配置</button>
+            <button class="btn-small" id="apply-columns-btn">✅ 应用选择</button>
+        </div>
+    </div>
+
     <!-- 工具栏：搜索、序号列、复制/导出 -->
     <div class="toolbar">
         <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
@@ -264,10 +361,11 @@
                 <input type="checkbox" id="add-index-col" checked> 
                 <label for="add-index-col"><i class="far fa-list-ol"></i> 显示序号列</label>
             </div>
+            <button class="btn" id="toggle-column-selector"><i class="fas fa-columns"></i> 列选择器</button>
         </div>
         <div class="button-group">
             <button class="btn" id="copy-table-btn"><i class="far fa-copy"></i> 复制表格</button>
-            <button class="btn btn-outline-blue" id="export-csv-btn"><i class="fas fa-download"></i> 导出 CSV</button>
+            <button class="btn btn-outline-blue" id="export-xlsx-btn"><i class="fas fa-file-excel"></i> 导出 XLSX</button>
         </div>
     </div>
 
@@ -313,7 +411,18 @@
         const tableBody = document.getElementById('table-body');
         const statsInfo = document.getElementById('stats-info');
         const copyTableBtn = document.getElementById('copy-table-btn');
-        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const exportXlsxBtn = document.getElementById('export-xlsx-btn');
+        
+        // 列选择器相关元素
+        const columnSelector = document.getElementById('column-selector');
+        const toggleColumnSelectorBtn = document.getElementById('toggle-column-selector');
+        const columnList = document.getElementById('column-list');
+        const selectedCount = document.getElementById('selected-count');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const selectNoneBtn = document.getElementById('select-none-btn');
+        const copyColumnsBtn = document.getElementById('copy-columns-btn');
+        const exportColumnsBtn = document.getElementById('export-columns-btn');
+        const applyColumnsBtn = document.getElementById('apply-columns-btn');
         
         // ---------- 辅助函数：解析JSON ----------
         function parseJSONInput(str) {
@@ -463,6 +572,48 @@
             renderTable();
         });
 
+        // ---------- 刷新列选择器 ----------
+        function refreshColumnSelector() {
+            if (currentColumns.length === 0) {
+                columnList.innerHTML = '<div style="color:#64748b; font-style:italic; padding:20px; text-align:center;">请先加载数据</div>';
+                columnSelector.style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            currentColumns.forEach((col, index) => {
+                const isSelected = currentColumns.includes(col);
+                html += `
+                    <div class="column-item">
+                        <input type="checkbox" id="col-${index}" data-column="${col}" ${isSelected ? 'checked' : ''}>
+                        <label for="col-${index}" style="cursor:pointer;">${col}</label>
+                    </div>
+                `;
+            });
+            
+            columnList.innerHTML = html;
+            updateSelectedCount();
+            
+            // 绑定复选框事件
+            columnList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', updateSelectedCount);
+            });
+        }
+
+        // ---------- 更新选中列计数 ----------
+        function updateSelectedCount() {
+            const checkboxes = columnList.querySelectorAll('input[type="checkbox"]');
+            const selected = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const total = checkboxes.length;
+            selectedCount.textContent = `(${selected}/${total})`;
+        }
+
+        // ---------- 获取选中的列 ----------
+        function getSelectedColumns() {
+            const checkboxes = columnList.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.dataset.column);
+        }
+
         // ---------- 刷新全部：解析JSON -> 提取列 -> 重置排序 -> 渲染 ----------
         function refreshFromJSON() {
             const raw = jsonInput.value;
@@ -474,6 +625,7 @@
                 currentColumns = [];
                 sortState = { column: null, direction: null };
                 renderTable();
+                refreshColumnSelector();
                 return;
             }
             
@@ -484,6 +636,7 @@
             sortState = { column: null, direction: null };
             
             renderTable();
+            refreshColumnSelector();
         }
 
         // ---------- 事件绑定 ----------
@@ -514,6 +667,85 @@
 
         // 序号列切换
         addIndexCheck.addEventListener('change', renderTable);
+
+        // ---------- 列选择器事件绑定 ----------
+        toggleColumnSelectorBtn.addEventListener('click', () => {
+            if (currentColumns.length === 0) {
+                alert('请先加载数据');
+                return;
+            }
+            columnSelector.style.display = columnSelector.style.display === 'none' ? 'block' : 'none';
+        });
+
+        selectAllBtn.addEventListener('click', () => {
+            columnList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+            updateSelectedCount();
+        });
+
+        selectNoneBtn.addEventListener('click', () => {
+            columnList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            updateSelectedCount();
+        });
+
+        copyColumnsBtn.addEventListener('click', async () => {
+            const selectedColumns = getSelectedColumns();
+            if (selectedColumns.length === 0) {
+                alert('请先选择要复制的列');
+                return;
+            }
+            const text = selectedColumns.join('\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
+            } catch (err) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
+            }
+        });
+
+        exportColumnsBtn.addEventListener('click', () => {
+            const selectedColumns = getSelectedColumns();
+            if (selectedColumns.length === 0) {
+                alert('请先选择要导出的列');
+                return;
+            }
+            const config = {
+                columns: selectedColumns,
+                timestamp: new Date().toISOString(),
+                totalColumns: currentColumns.length
+            };
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `column_config_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        applyColumnsBtn.addEventListener('click', () => {
+            const selectedColumns = getSelectedColumns();
+            if (selectedColumns.length === 0) {
+                alert('请至少选择一列');
+                return;
+            }
+            currentColumns = selectedColumns;
+            sortState = { column: null, direction: null };
+            renderTable();
+            columnSelector.style.display = 'none';
+            alert(`✅ 已应用 ${selectedColumns.length} 个列`);
+        });
 
         // ---------- 复制表格 (HTML格式 + 纯文本) ----------
         function getTableText(includeHeader = true) {
@@ -561,28 +793,59 @@
             }
         });
 
-        // ---------- 导出 CSV ----------
-        function downloadCSV(content, filename) {
-            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' }); // BOM for Chinese
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
-        exportCsvBtn.addEventListener('click', () => {
+        // ---------- 导出 XLSX ----------
+        function exportToXLSX() {
             if (filteredData.length === 0 && currentColumns.length === 0) {
                 alert('没有数据可导出');
                 return;
             }
-            const csvText = getTableText(true);
+            
+            const showIndex = addIndexCheck.checked;
+            
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 准备数据
+            const data = [];
+            
+            // 添加表头
+            const headerRow = [];
+            if (showIndex) headerRow.push('#');
+            headerRow.push(...currentColumns);
+            data.push(headerRow);
+            
+            // 添加数据行
+            filteredData.forEach((obj, idx) => {
+                const row = [];
+                if (showIndex) row.push(idx + 1);
+                currentColumns.forEach(col => {
+                    const val = getCellValue(obj, col);
+                    row.push(val);
+                });
+                data.push(row);
+            });
+            
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // 设置列宽
+            const colWidths = [];
+            if (showIndex) colWidths.push({ wch: 8 }); // 序号列宽度
+            currentColumns.forEach(() => colWidths.push({ wch: 20 })); // 数据列宽度
+            ws['!cols'] = colWidths;
+            
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(wb, ws, '数据表');
+            
+            // 生成文件名
             const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            downloadCSV(csvText, `table_export_${timestamp}.csv`);
-        });
+            const filename = `json_table_${timestamp}.xlsx`;
+            
+            // 导出文件
+            XLSX.writeFile(wb, filename);
+        }
+
+        exportXlsxBtn.addEventListener('click', exportToXLSX);
 
         // ---------- 初始化：加载默认示例 ----------
         (function initialize() {
