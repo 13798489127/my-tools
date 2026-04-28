@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工单数据解析导出工具</title>
+    <!-- SheetJS CDN -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #409EFF;
+            --primary-hover: #337ecc;
+            --success: #67c23a;
+            --warning: #e6a23c;
+            --danger: #f56c6c;
+            --text: #303133;
+            --text-secondary: #606266;
+            --text-muted: #909399;
+            --border: #dcdfe6;
+            --border-light: #e4e7ed;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --radius: 8px;
+            --radius-sm: 6px;
+            --transition: 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 20px 40px;
+        }
+
+        /* Header */
+        .app-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .app-header .logo-icon {
+            font-size: 42px;
+            margin-bottom: 4px;
+        }
+
+        .app-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.5px;
+        }
+
+        .app-header .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Card */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            font-size: 18px;
+        }
+
+        /* Textarea */
+        .input-area {
+            width: 100%;
+            min-height: 200px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            transition: var(--transition);
+            color: var(--text);
+            background: #fafbfc;
+        }
+
+        .input-area:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+            background: #fff;
+        }
+
+        .input-area::placeholder {
+            color: #c0c4cc;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 14px rgba(64, 158, 255, 0.35);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #5daf34;
+            box-shadow: 0 4px 14px rgba(103, 194, 58, 0.35);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: #fff;
+        }
+
+        .btn-warning:hover {
+            background: #d4932e;
+            box-shadow: 0 4px 14px rgba(230, 162, 60, 0.35);
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: #ecf5ff;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        .stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            background: #f5f7fa;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .stat-chip .val {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Table Container */
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 65vh;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-wrapper table {
+            border-collapse: collapse;
+            width: max-content;
+            min-width: 100%;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .table-wrapper thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table-wrapper thead th {
+            background: #f5f7fa;
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 12px 10px;
+            border-bottom: 2px solid var(--border);
+            text-align: center;
+            white-space: nowrap;
+            font-size: 12px;
+            letter-spacing: 0.2px;
+        }
+
+        .table-wrapper tbody td {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: center;
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table-wrapper tbody tr {
+            transition: background 0.15s;
+        }
+
+        .table-wrapper tbody tr:hover {
+            background: #f8fafd;
+        }
+
+        .table-wrapper tbody tr:nth-child(even) {
+            background: #fafbfc;
+        }
+
+        .table-wrapper tbody tr:nth-child(even):hover {
+            background: #f0f4f8;
+        }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .status-VISIT {
+            background: #ecf5ff;
+            color: #409EFF;
+        }
+
+        .status-AFFIRM {
+            background: #f0f9eb;
+            color: #67c23a;
+        }
+
+        .status-DONE {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status-ING {
+            background: #fff7e6;
+            color: #e6a23c;
+        }
+
+        .status-PAUSE {
+            background: #fef0f0;
+            color: #f56c6c;
+        }
+
+        .status-NOT {
+            background: #f5f5f5;
+            color: #909399;
+        }
+
+        .status-ROB {
+            background: #e6f7ff;
+            color: #1890ff;
+        }
+
+        .status-PEND {
+            background: #fdf6ec;
+            color: #d48806;
+        }
+
+        .status-CANCEL {
+            background: #fee;
+            color: #c00;
+        }
+
+        .status-BACK {
+            background: #fff1f0;
+            color: #cf1322;
+        }
+
+        .status-URGE {
+            background: #fffbe6;
+            color: #d46b08;
+        }
+
+        .status-default {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        /* Tooltip for truncated text */
+        .cell-content {
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            cursor: default;
+        }
+
+        .cell-content:hover {
+            position: relative;
+            z-index: 20;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            pointer-events: none;
+            animation: toastIn 0.35s ease, toastOut 0.35s ease 2.2s forwards;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .toast-success {
+            background: #67c23a;
+        }
+
+        .toast-error {
+            background: #f56c6c;
+        }
+
+        .toast-info {
+            background: #409EFF;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @keyframes toastOut {
+            from {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 12px 8px 24px;
+            }
+
+            .card {
+                padding: 14px;
+            }
+
+            .btn-row {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .table-wrapper table {
+                font-size: 11px;
+            }
+
+            .table-wrapper thead th,
+            .table-wrapper tbody td {
+                padding: 6px 5px;
+            }
+        }
+
+        /* Section divider */
+        .section-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="logo-icon">📋</div>
+            <h1>工单数据解析导出工具</h1>
+            <p class="subtitle">粘贴工单JSON数据 → 自动解析 → 预览表格 → 导出Excel</p>
+        </div>
+
+        <!-- Input Card -->
+        <div class="card">
+            <div class="card-title"><span class="icon">📥</span>数据输入</div>
+            <textarea id="jsonInput" class="input-area"
+                placeholder='请粘贴工单JSON数据（支持单条对象或数组格式）&#10;&#10;示例格式：&#10;[{ "id": "xxx", "code": "WX2604280064", ... }]&#10;&#10;或单条对象：&#10;{ "id": "xxx", "code": "WX2604280064", ... }'></textarea>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="parseAndPreview()" title="解析JSON数据并生成预览表格">
+                    🔍 解析数据
+                </button>
+                <button class="btn btn-outline" onclick="loadSampleData()" title="加载内置示例数据">
+                    📦 加载示例数据
+                </button>
+                <button class="btn btn-warning" onclick="clearAll()" title="清空输入和预览">
+                    🗑️ 清空全部
+                </button>
+                <button id="btnExport" class="btn btn-success" onclick="exportToExcel()" disabled
+                    title="将解析后的数据导出为Excel文件">
+                    📥 导出XLSX
+                </button>
+            </div>
+            <div id="statsRow" class="stats-row" style="display:none;"></div>
+        </div>
+
+        <!-- Preview Card -->
+        <div class="card" id="previewCard" style="display:none;">
+            <div class="card-title">
+                <span class="icon">📊</span>数据预览
+                <span style="font-weight:400;font-size:12px;color:var(--text-muted);margin-left:8px;">
+                    （横向滚动查看更多列，操作流水已平铺）
+                </span>
+            </div>
+            <div class="table-wrapper" id="tableWrapper">
+                <div class="empty-state">
+                    <span class="icon">📭</span>
+                    <p>暂无数据，请粘贴JSON后点击"解析数据"</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // ==================== 常量映射 ====================
+            // 状态映射（recordList中的status -> 中文描述）
+            const STATUS_MAP = {
+                'NOT': { detailStatus: '故障登记', action: '' },
+                'BACK': { detailStatus: '工单退回', actionFn: (item) => '退回; 退回说明：' + (item.describe || '暂无') },
+                'URGE': { detailStatus: '工单催单', action: '催单' },
+                'RECOVER': { detailStatus: '工单恢复', action: '恢复' },
+                'WAIT': {
+                    detailStatus: '工单转单', actionFn: (item) => '转单至：' + (item.groupName || '') + '; 挂起说明：' + (
+                        item.describe || '暂无')
+                },
+                'ROB': { detailStatus: '工单抢单', action: '抢单' },
+                'PEND': {
+                    detailStatus: '工单派工',
+                    action: '指派给维修人员：',
+                    repairerFn: (item) => {
+                        if (item.usersInfo && item.usersInfo.length > 0) {
+                            return item.usersInfo
+                                .filter(a => a.type === 'normal')
+                                .map(a => a.realname + '(' + (a.phone || '无手机号') + ')')
+                                .join(',');
+                        }
+                        return '';
+                    }
+                },
+                'REPEND': {
+                    detailStatus: '工单重派工',
+                    action: '指派给维修人员：',
+                    repairerFn: (item) => {
+                        if (item.usersInfo && item.usersInfo.length > 0) {
+                            return item.usersInfo
+                                .filter(a => a.type === 'normal')
+                                .map(a => a.realname + '(' + (a.phone || '无手机号') + ')')
+                                .join(',');
+                        }
+                        return '';
+                    }
+                },
+                'ING': { detailStatus: '开始维修', action: '进行处理' },
+                'PAUSE': { detailStatus: '维修挂起', actionFn: (item) => '挂起; 挂起说明：' + (item.describe || '暂无') },
+                'ASSIST': { detailStatus: '工单申请协助', action: '协助' },
+                'CANCEL': { detailStatus: '工单取消', actionFn: (item) => '取消工单; 取消说明：' + (item.describe || '暂无') },
+                'DONE': { detailStatus: '维修完工', actionFn: (item) => '完成维修工单处理; 完工描述：' + (item.describe || '暂无') },
+                'AFFIRM': { detailStatus: '确认完工', action: '确认完工' },
+                'REVIEW': { detailStatus: '维修评价', action: '完成评价' },
+                'VISIT': { detailStatus: '工单回访', action: '进行工单回访' },
+                'FEEDBACK': {
+                    detailStatus: '滞留反馈',
+                    actionFn: (item) => {
+                        const feedback = (item.ext && item.ext.feedback) ? item.ext.feedback : '暂无';
+                        const achieveTime = (item.ext && item.ext.achieveTime) ? item.ext.achieveTime.split(
+                            ' ')[0] : '未知';
+                        return '进行滞留反馈;反馈内容：' + feedback + ';预计完工日期' + achieveTime;
+                    }
+                },
+            };
+
+            // 工单类型映射
+            const TYPE_NAME_MAP = {
+                'COMM': '普通工单',
+                'URGENT': '紧急工单',
+                'VERY_URGENT': '非常紧急工单',
+            };
+
+            // 故障类型映射
+            const MATTER_TYPE_MAP = {
+                'OTHER': '其他',
+                'ELECTRIC': '电气故障',
+                'WATER': '水暖故障',
+                'CARPENTRY': '木工维修',
+                'LOCK': '门锁维修',
+                'HVAC': '暖通空调',
+                'PLUMBING': '管道疏通',
+                'STRUCTURE': '结构维修',
+            };
+
+            // 紧急程度映射
+            const PLEVEL_MAP = {
+                'COMMON': '普通',
+                'URGENT': '紧急',
+                'VERY_URGENT': '非常紧急',
+            };
+
+            // 完工确认映射
+            const DONE_AFFIRM_MAP = {
+                0: '未确认',
+                1: '确认中',
+                2: '已确认',
+            };
+
+            // 平台映射
+            const PLATFORM_MAP = {
+                'BOXPHONE': '电话盒子',
+                'WEB': '网页端',
+                'MP_WX': '微信小程序',
+                'APP': '移动APP',
+            };
+
+            // 全局解析结果存储
+            let parsedWorkOrders = [];
+            // 动态操作流水列定义（用于导出时保持一致）
+            let dynamicFlowColumns = [];
+
+            // ==================== 工具函数 ====================
+            function parseTime(str) {
+                if (!str) return null;
+                // 支持 "YYYY-MM-DD HH:mm:ss" 和 ISO格式
+                const normalized = str.replace(' ', 'T');
+                const d = new Date(normalized);
+                if (isNaN(d.getTime())) return null;
+                return d;
+            }
+
+            function formatDateTime(d) {
+                if (!d || isNaN(d.getTime())) return '';
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mi = String(d.getMinutes()).padStart(2, '0');
+                const ss = String(d.getSeconds()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+            }
+
+            function timeDiffSeconds(d1, d2) {
+                // d1 - d2，返回秒数
+                if (!d1 || !d2 || isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+                return Math.round((d1.getTime() - d2.getTime()) / 1000);
+            }
+
+            function formatDuration(totalSeconds) {
+                if (totalSeconds === null || totalSeconds === undefined || isNaN(totalSeconds)) return '';
+                if (totalSeconds < 0) totalSeconds = 0;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const parts = [];
+                if (hours > 0) parts.push(hours + '小时');
+                if (minutes > 0) parts.push(minutes + '分钟');
+                if (seconds > 0 || parts.length === 0) parts.push(seconds + '秒');
+                return parts.join('');
+            }
+
+            function getStatusClass(status) {
+                const clsMap = {
+                    'VISIT': 'status-VISIT',
+                    'AFFIRM': 'status-AFFIRM',
+                    'DONE': 'status-DONE',
+                    'ING': 'status-ING',
+                    'PAUSE': 'status-PAUSE',
+                    'NOT': 'status-NOT',
+                    'ROB': 'status-ROB',
+                    'PEND': 'status-PEND',
+                    'REPEND': 'status-PEND',
+                    'CANCEL': 'status-CANCEL',
+                    'BACK': 'status-BACK',
+                    'URGE': 'status-URGE',
+                };
+                return clsMap[status] || 'status-default';
+            }
+
+            function getStatusText(status) {
+                const map = {
+                    'NOT': '待处理',
+                    'ROB': '已接单',
+                    'PEND': '已派工',
+                    'REPEND': '已重派工',
+                    'ING': '维修中',
+                    'PAUSE': '已挂起',
+                    'RECOVER': '已恢复',
+                    'DONE': '已完工',
+                    'AFFIRM': '已确认',
+                    'VISIT': '已回访',
+                    'CANCEL': '已取消',
+                    'BACK': '已退回',
+                    'URGE': '已催单',
+                    'WAIT': '已转单',
+                    'ASSIST': '协助中',
+                    'REVIEW': '已评价',
+                    'FEEDBACK': '滞留反馈',
+                };
+                return map[status] || status;
+            }
+
+            // ==================== 核心解析逻辑 ====================
+            function parseSingleOrder(order) {
+                const result = {};
+
+                // === 基础信息 ===
+                result._code = order.code || '';
+                result._createdAt = order.createdAt || '';
+                result._deptName = order.deptName || '';
+                result._objectName = order.objectName || '';
+                result._typeName = order.typeName || '';
+                result._matterType = MATTER_TYPE_MAP[order.matterType] || order.matterType || '';
+                result._typeNotes = order.typeNotes || '';
+                result._proposer = order.proposer || '';
+                result._phone = order.phone || '';
+                result._groupName = order.groupName || '';
+                result._plevel = PLEVEL_MAP[order.plevel] || order.plevel || '';
+                result._platform = PLATFORM_MAP[order.platform] || order.platform || '';
+                result._updatedAt = order.updatedAt || '';
+                result._manhour = order.manhour !== undefined ? order.manhour : 0;
+                result._doneAffirm = DONE_AFFIRM_MAP[order.doneAffirm] || String(order.doneAffirm || '');
+                result._status = getStatusText(order.status);
+                result._statusRaw = order.status || '';
+                result._address = order.address || '';
+                result._areaName = order.areaName || '';
+                result._repairerNames = order.repairerNames || '';
+
+                // 维修人员（多个人逗号隔开，只留名称）
+                if (order.usersInfo && order.usersInfo.length > 0) {
+                    result._repairerNames = order.usersInfo
+                        .filter(u => u.type === 'normal')
+                        .map(u => u.realname)
+                        .join(',');
+                }
+                if (!result._repairerNames && order._repairer) {
+                    result._repairerNames = order._repairer;
+                }
+
+                // === 从recordList提取操作流水 ===
+                const recordList = order.recordList || [];
+                // 按createdAt排序（升序）
+                const sortedRecords = [...recordList].sort((a, b) => {
+                    const ta = parseTime(a.createdAt);
+                    const tb = parseTime(b.createdAt);
+                    if (!ta && !tb) return 0;
+                    if (!ta) return 1;
+                    if (!tb) return -1;
+                    return ta - tb;
+                });
+
+                // 提取各状态时间
+                const flowMap = {}; // { status: [时间字符串, ...] }
+                for (const rec of sortedRecords) {
+                    const st = rec.status;
+                    if (!flowMap[st]) flowMap[st] = [];
+                    flowMap[st].push(rec.createdAt);
+                }
+
+                // 单次状态（取第一次）
+                const singleStatuses = ['NOT', 'ROB', 'PEND', 'REPEND', 'ING', 'DONE', 'AFFIRM', 'VISIT',
+                    'BACK', 'URGE', 'WAIT', 'ASSIST', 'CANCEL', 'REVIEW', 'FEEDBACK'
+                ];
+                const flowTimes = {};
+                for (const st of singleStatuses) {
+                    if (flowMap[st] && flowMap[st].length > 0) {
+                        flowTimes[st] = flowMap[st][0]; // 取第一次
+                    } else {
+                        flowTimes[st] = '';
+                    }
+                }
+
+                // PAUSE和RECOVER配对
+                const pauseList = flowMap['PAUSE'] || [];
+                const recoverList = flowMap['RECOVER'] || [];
+                const pauseRecoverPairs = [];
+                // 按时间交错配对
+                let pi = 0,
+                    ri = 0;
+                const allPauseRecover = [];
+                for (const rec of sortedRecords) {
+                    if (rec.status === 'PAUSE') allPauseRecover.push({ type: 'PAUSE', time: rec.createdAt });
+                    if (rec.status === 'RECOVER') allPauseRecover.push({ type: 'RECOVER', time: rec.createdAt });
+                }
+                // 顺序配对：PAUSE后跟RECOVER
+                let pendingPause = null;
+                for (const item of allPauseRecover) {
+                    if (item.type === 'PAUSE') {
+                        if (pendingPause !== null) {
+                            // 上一个PAUSE没有RECOVER，保存为未完成配对
+                            pauseRecoverPairs.push({ pauseTime: pendingPause, recoverTime: '' });
+                        }
+                        pendingPause = item.time;
+                    } else if (item.type === 'RECOVER') {
+                        if (pendingPause !== null) {
+                            pauseRecoverPairs.push({ pauseTime: pendingPause, recoverTime: item.time });
+                            pendingPause = null;
+                        } else {
+                            // RECOVER没有对应的PAUSE，单独记录
+                            pauseRecoverPairs.push({ pauseTime: '', recoverTime: item.time });
+                        }
+                    }
+                }
+                if (pendingPause !== null) {
+                    pauseRecoverPairs.push({ pauseTime: pendingPause, recoverTime: '' });
+                }
+
+                // 将配对结果存入flowTimes
+                for (let i = 0; i < pauseRecoverPairs.length; i++) {
+                    const pair = pauseRecoverPairs[i];
+                    flowTimes['PAUSE_' + (i + 1)] = pair.pauseTime;
+                    flowTimes['RECOVER_' + (i + 1)] = pair.recoverTime;
+                }
+                // 记录最大配对索引
+                const maxPairIndex = pauseRecoverPairs.length;
+
+                result._flowTimes = flowTimes;
+                result._maxPairIndex = maxPairIndex;
+                result._sortedRecords = sortedRecords;
+
+                // === 计算耗时 ===
+                const ingTime = parseTime(flowTimes['ING']);
+                const doneTime = parseTime(flowTimes['DONE']);
+                const affirmTime = parseTime(flowTimes['AFFIRM']);
+                const notTime = parseTime(flowTimes['NOT']);
+                const statusTime = parseTime(order.statusTime); // AFFIRM确认完工时间
+
+                // 暂停耗时总和（秒）
+                let totalPauseSeconds = 0;
+                for (const pair of pauseRecoverPairs) {
+                    const pTime = parseTime(pair.pauseTime);
+                    const rTime = parseTime(pair.recoverTime);
+                    if (pTime && rTime && rTime > pTime) {
+                        totalPauseSeconds += timeDiffSeconds(rTime, pTime);
+                    }
+                }
+                result._totalPauseDuration = formatDuration(totalPauseSeconds);
+                result._totalPauseSeconds = totalPauseSeconds;
+
+                // 维修耗时：DONE - ING - 暂停时长（秒）
+                if (ingTime && doneTime) {
+                    const rawSeconds = timeDiffSeconds(doneTime, ingTime);
+                    if (rawSeconds !== null) {
+                        const actualSeconds = Math.max(0, rawSeconds - totalPauseSeconds);
+                        result._repairDuration = formatDuration(actualSeconds);
+                        result._repairDurationSeconds = actualSeconds;
+                    } else {
+                        result._repairDuration = '';
+                        result._repairDurationSeconds = null;
+                    }
+                } else {
+                    result._repairDuration = '';
+                    result._repairDurationSeconds = null;
+                }
+
+                // 响应耗时：statusTime - ING时间（秒）
+                if (ingTime && statusTime) {
+                    const respSeconds = timeDiffSeconds(statusTime, ingTime);
+                    result._responseDuration = formatDuration(respSeconds);
+                    result._responseDurationSeconds = respSeconds;
+                } else {
+                    result._responseDuration = '';
+                    result._responseDurationSeconds = null;
+                }
+
+                // 完工时间（DONE状态时间）
+                result._doneTime = flowTimes['DONE'] || '';
+                // 确认完工时间
+                result._affirmTime = flowTimes['AFFIRM'] || order.doneAffirmAt || '';
+
+                // 申报时间 = NOT时间
+                result._notTime = flowTimes['NOT'] || order.createdAt || '';
+
+                return result;
+            }
+
+            function parseAllOrders(rawData) {
+                let orders = [];
+                if (Array.isArray(rawData)) {
+                    orders = rawData;
+                } else if (typeof rawData === 'object' && rawData !== null) {
+                    // 单条对象
+                    orders = [rawData];
+                } else {
+                    throw new Error('数据格式错误：请输入JSON对象或数组');
+                }
+                if (orders.length === 0) {
+                    throw new Error('数据为空，请检查输入');
+                }
+                return orders.map(o => parseSingleOrder(o));
+            }
+
+            // ==================== 收集所有工单中出现的操作流水列 ====================
+            function collectFlowColumns(parsedOrders) {
+                const singleStatusOrder = ['NOT', 'PEND', 'REPEND', 'ROB', 'WAIT', 'ING', 'DONE', 'AFFIRM', 'REVIEW',
+                    'VISIT', 'BACK', 'URGE', 'ASSIST', 'CANCEL', 'FEEDBACK'
+                ];
+                const singleLabelMap = {
+                    'NOT': '故障登记时间',
+                    'PEND': '派工时间',
+                    'REPEND': '重派工时间',
+                    'ROB': '接单时间',
+                    'WAIT': '转单时间',
+                    'ING': '开始维修时间',
+                    'DONE': '完工时间',
+                    'AFFIRM': '确认完工时间',
+                    'REVIEW': '维修评价时间',
+                    'VISIT': '工单回访时间',
+                    'BACK': '退回时间',
+                    'URGE': '催单时间',
+                    'ASSIST': '协助时间',
+                    'CANCEL': '取消时间',
+                    'FEEDBACK': '滞留反馈时间',
+                };
+
+                // 检查哪些状态在所有工单中出现过
+                const appearedSingle = new Set();
+                let maxPairs = 0;
+                for (const order of parsedOrders) {
+                    const ft = order._flowTimes;
+                    for (const st of singleStatusOrder) {
+                        if (ft[st] && ft[st].trim()) {
+                            appearedSingle.add(st);
+                        }
+                    }
+                    if (order._maxPairIndex > maxPairs) {
+                        maxPairs = order._maxPairIndex;
+                    }
+                }
+
+                // 按顺序构建列
+                const columns = [];
+                for (const st of singleStatusOrder) {
+                    if (appearedSingle.has(st)) {
+                        columns.push({
+                            key: 'flow_' + st,
+                            title: singleLabelMap[st] || st,
+                            status: st,
+                        });
+                    }
+                }
+                // 挂起/恢复对
+                for (let i = 1; i <= maxPairs; i++) {
+                    const pauseKey = 'PAUSE_' + i;
+                    const recoverKey = 'RECOVER_' + i;
+                    // 检查是否有任何工单有该挂起/恢复时间
+                    let hasPause = false;
+                    let hasRecover = false;
+                    for (const order of parsedOrders) {
+                        if (order._flowTimes[pauseKey] && order._flowTimes[pauseKey].trim()) hasPause = true;
+                        if (order._flowTimes[recoverKey] && order._flowTimes[recoverKey].trim()) hasRecover = true;
+                    }
+                    if (hasPause || hasRecover) {
+                        columns.push({
+                            key: 'flow_' + pauseKey,
+                            title: '挂起时间' + i,
+                            status: 'PAUSE',
+                        });
+                        columns.push({
+                            key: 'flow_' + recoverKey,
+                            title: '恢复时间' + i,
+                            status: 'RECOVER',
+                        });
+                    }
+                }
+                return columns;
+            }
+
+            // ==================== 渲染表格 ====================
+            function renderTable(parsedOrders) {
+                const tableWrapper = document.getElementById('tableWrapper');
+                if (parsedOrders.length === 0) {
+                    tableWrapper.innerHTML = '<div class="empty-state"><span class="icon">📭</span><p>暂无数据</p></div>';
+                    return;
+                }
+
+                // 收集操作流水列
+                dynamicFlowColumns = collectFlowColumns(parsedOrders);
+
+                // 构建表头
+                const mainColumns = [
+                    { key: '_code', title: '工单编号', width: '150px' },
+                    { key: '_notTime', title: '申报时间', width: '160px' },
+                    { key: '_deptName', title: '申报部门', width: '120px' },
+                    { key: '_objectName', title: '维修对象', width: '100px' },
+                    { key: '_matterType', title: '维修类型', width: '100px' },
+                    { key: '_address', title: '需求位置', width: '200px' },
+                    { key: '_typeNotes', title: '需求内容', width: '220px' },
+                    { key: '_proposer', title: '申报人', width: '90px' },
+                    { key: '_phone', title: '联系方式', width: '130px' },
+                    { key: '_groupName', title: '维修班组', width: '150px' },
+                    { key: '_repairerNames', title: '维修人员', width: '130px' },
+                    { key: '_platform', title: '申报平台', width: '90px' },
+                    { key: '_plevel', title: '紧急程度', width: '80px' },
+                    { key: '_status', title: '工单状态', width: '90px' },
+                    { key: '_updatedAt', title: '更新时间', width: '160px' },
+                    { key: '_manhour', title: '标准工时(小时)', width: '100px' },
+                    { key: '_repairDuration', title: '维修耗时', width: '100px' },
+                    { key: '_responseDuration', title: '响应耗时', width: '100px' },
+                    { key: '_totalPauseDuration', title: '暂停耗时', width: '100px' },
+                    { key: '_doneTime', title: '完工时间', width: '160px' },
+                    { key: '_affirmTime', title: '确认完工时间', width: '160px' },
+                    { key: '_doneAffirm', title: '完工确认', width: '80px' },
+                ];
+
+                // 合并所有列
+                const allColumns = [...mainColumns];
+                for (const fc of dynamicFlowColumns) {
+                    allColumns.push({
+                        key: fc.key,
+                        title: fc.title,
+                        width: '160px',
+                        isFlow: true,
+                        flowStatus: fc.status,
+                    });
+                }
+
+                // 构建HTML
+                let theadHTML = '<thead><tr>';
+                for (const col of allColumns) {
+                    theadHTML += `<th style="min-width:${col.width || '120px'}">${col.title}</th>`;
+                }
+                theadHTML += '</tr></thead>';
+
+                let tbodyHTML = '<tbody>';
+                for (const order of parsedOrders) {
+                    tbodyHTML += '<tr>';
+                    for (const col of allColumns) {
+                        let val = '';
+                        if (col.key.startsWith('flow_')) {
+                            // 操作流水列
+                            const flowKey = col.key.replace('flow_', '');
+                            val = (order._flowTimes && order._flowTimes[flowKey]) ? order._flowTimes[flowKey] : '';
+                        } else if (col.key === '_status') {
+                            val = order[col.key] || '';
+                        } else if (col.key === '_manhour') {
+                            val = order[col.key] !== undefined ? order[col.key] : '';
+                        } else {
+                            val = order[col.key] !== undefined ? order[col.key] : '';
+                        }
+                        // 对于状态列，添加样式
+                        if (col.key === '_status') {
+                            const rawStatus = order._statusRaw || '';
+                            const cls = getStatusClass(rawStatus);
+                            val = `<span class="status-badge ${cls}">${val}</span>`;
+                        }
+                        if (col.isFlow && val && col.flowStatus) {
+                            const cls = getStatusClass(col.flowStatus);
+                            val = `<span class="status-badge ${cls}" style="font-size:11px;">${val}</span>`;
+                        }
+                        // 截断长文本
+                        const displayVal = (typeof val === 'string' && val.length > 60 && !val.includes('<span')) ?
+                            `<span title="${escapeHtml(val)}" class="cell-content">${escapeHtml(val.substring(0, 57))}...</span>` :
+                            val;
+                        tbodyHTML += `<td>${displayVal || ''}</td>`;
+                    }
+                    tbodyHTML += '</tr>';
+                }
+                tbodyHTML += '</tbody>';
+
+                tableWrapper.innerHTML = `<table>${theadHTML}${tbodyHTML}</table>`;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            // ==================== 导出Excel ====================
+            function exportToExcel() {
+                if (parsedWorkOrders.length === 0) {
+                    showToast('请先解析数据', 'error');
+                    return;
+                }
+                try {
+                    // 构建导出数据
+                    const mainColumns = [
+                        { key: '_code', title: '工单编号' },
+                        { key: '_notTime', title: '申报时间' },
+                        { key: '_deptName', title: '申报部门' },
+                        { key: '_objectName', title: '维修对象' },
+                        { key: '_matterType', title: '维修类型' },
+                        { key: '_address', title: '需求位置' },
+                        { key: '_typeNotes', title: '需求内容' },
+                        { key: '_proposer', title: '申报人' },
+                        { key: '_phone', title: '联系方式' },
+                        { key: '_groupName', title: '维修班组' },
+                        { key: '_repairerNames', title: '维修人员' },
+                        { key: '_platform', title: '申报平台' },
+                        { key: '_plevel', title: '紧急程度' },
+                        { key: '_status', title: '工单状态' },
+                        { key: '_updatedAt', title: '更新时间' },
+                        { key: '_manhour', title: '标准工时(小时)' },
+                        { key: '_repairDuration', title: '维修耗时' },
+                        { key: '_responseDuration', title: '响应耗时' },
+                        { key: '_totalPauseDuration', title: '暂停耗时' },
+                        { key: '_doneTime', title: '完工时间' },
+                        { key: '_affirmTime', title: '确认完工时间' },
+                        { key: '_doneAffirm', title: '完工确认' },
+                    ];
+
+                    const allColumns = [...mainColumns];
+                    for (const fc of dynamicFlowColumns) {
+                        allColumns.push({
+                            key: fc.key,
+                            title: fc.title,
+                        });
+                    }
+
+                    // 构建数据行
+                    const headerRow = allColumns.map(c => c.title);
+                    const dataRows = [headerRow];
+                    for (const order of parsedWorkOrders) {
+                        const row = [];
+                        for (const col of allColumns) {
+                            let val = '';
+                            if (col.key.startsWith('flow_')) {
+                                const flowKey = col.key.replace('flow_', '');
+                                val = (order._flowTimes && order._flowTimes[flowKey]) ? order._flowTimes[flowKey] : '';
+                            } else {
+                                val = order[col.key] !== undefined ? order[col.key] : '';
+                            }
+                            row.push(String(val));
+                        }
+                        dataRows.push(row);
+                    }
+
+                    // 使用SheetJS创建工作簿
+                    const ws = XLSX.utils.aoa_to_sheet(dataRows);
+                    // 设置列宽
+                    const colWidths = allColumns.map(c => ({ wch: Math.max(c.title.length * 2, 18) }));
+                    ws['!cols'] = colWidths;
+
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, '工单数据');
+
+                    // 生成文件名
+                    const now = new Date();
+                    const filename =
+                        `工单导出_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}.xlsx`;
+
+                    XLSX.writeFile(wb, filename);
+                    showToast(`成功导出 ${parsedWorkOrders.length} 条工单数据`, 'success');
+                } catch (err) {
+                    console.error('导出失败:', err);
+                    showToast('导出失败：' + err.message, 'error');
+                }
+            }
+
+            // ==================== Toast提示 ====================
+            function showToast(msg, type) {
+                const existing = document.querySelector('.toast');
+                if (existing) existing.remove();
+                const toast = document.createElement('div');
+                toast.className = 'toast toast-' + (type || 'info');
+                toast.textContent = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentNode) toast.remove();
+                }, 2600);
+            }
+
+            // ==================== 主流程 ====================
+            function parseAndPreview() {
+                const inputEl = document.getElementById('jsonInput');
+                const rawText = inputEl.value.trim();
+                if (!rawText) {
+                    showToast('请先粘贴JSON数据', 'error');
+                    return;
+                }
+                try {
+                    const rawData = JSON.parse(rawText);
+                    parsedWorkOrders = parseAllOrders(rawData);
+                    dynamicFlowColumns = collectFlowColumns(parsedWorkOrders);
+                    renderTable(parsedWorkOrders);
+
+                    // 显示预览卡片
+                    document.getElementById('previewCard').style.display = '';
+                    document.getElementById('btnExport').disabled = false;
+
+                    // 更新统计
+                    const statsRow = document.getElementById('statsRow');
+                    statsRow.style.display = 'flex';
+                    statsRow.innerHTML = `
+                    <span class="stat-chip">📋 工单总数：<span class="val">${parsedWorkOrders.length}</span></span>
+                    <span class="stat-chip">🔄 操作流水列：<span class="val">${dynamicFlowColumns.length}</span></span>
+                    <span class="stat-chip">📊 总列数：<span class="val">${22 + dynamicFlowColumns.length}</span></span>
+                `;
+
+                    showToast(`成功解析 ${parsedWorkOrders.length} 条工单`, 'success');
+                    // 滚动到预览区域
+                    document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (err) {
+                    console.error('解析失败:', err);
+                    showToast('解析失败：' + err.message, 'error');
+                    parsedWorkOrders = [];
+                    dynamicFlowColumns = [];
+                    document.getElementById('btnExport').disabled = true;
+                }
+            }
+
+            function loadSampleData() {
+                const sampleData = [
+                    {
+                        "id": "909847531255631872",
+                        "createdBy": "879033060065153024",
+                        "createdByName": "孟保萍",
+                        "updatedBy": "879033060065153024",
+                        "createdAt": "2026-04-28 12:23:06",
+                        "updatedAt": "2026-04-28 14:49:23",
+                        "doneAffirmAt": "2026-04-28 14:26:55",
+                        "status": "VISIT",
+                        "code": "WX2604280064",
+                        "proposer": "叶立家",
+                        "proposerId": "123215802257248256",
+                        "areaId": "270185904126169088",
+                        "areaName": "发热门诊（6号楼）",
+                        "objectId": "145963275249651712",
+                        "objectName": "其他",
+                        "typeName": "",
+                        "typeNotes": "司机班那里的挡雨伞漏水了，需要带个梯子过去。他那边有东西补，具体位置在发热门诊后面那里",
+                        "groupId": "121740014479609856",
+                        "groupName": "水电维修班组（红荔）",
+                        "users": ["307586473564180480"],
+                        "usersInfo": [
+                            {
+                                "removePosition": false, "phone": "XXX", "id": "307586473564180480", "type": "normal",
+                                "userId": "307586473564180480", "removePost": false, "realname": "严如定"
+                            }
+                        ],
+                        "plevel": "COMMON",
+                        "phone": "13923813128",
+                        "jobNum": "",
+                        "type": "COMM",
+                        "orgId": "121616279827255296",
+                        "ltdId": "121616279827255296",
+                        "platform": "BOXPHONE",
+                        "deptId": "123160147416715264",
+                        "deptName": "司机班",
+                        "helpful": 0,
+                        "areaCode": "1-1-2-7-",
+                        "groupInfo": { "name": "水电维修班组（红荔）", "id": "121740014479609856", "isSave": false },
+                        "statusTime": "2026-04-28 14:26:55",
+                        "matterType": "OTHER",
+                        "consumesType": 1,
+                        "doneAffirm": 2,
+                        "affirmType": 0,
+                        "confirmItem": { "one": 0, "two": 0, "three": 0 },
+                        "outsideInfo": { "file": [], "phone": "", "name": "", "users": [] },
+                        "serviceType": 1,
+                        "platformId": "20260428122057",
+                        "ostop": 1,
+                        "recordList": [
+                            {
+                                "id": "909884345953685504", "createdBy": "879033060065153024", "affirmName": "孟保萍",
+                                "createdAt": "2026-04-28 14:49:23", "status": "VISIT",
+                                "patrolId": "909847531255631872", "orgId": "121616279827255296",
+                                "ltdId": "121616279827255296", "affirmInfo": {
+                                    "removePosition": false, "phone": "XXX",
+                                    "name": "XXX", "id": "879033060065153024", "removePost": false, "realname": "孟保萍"
+                                }
+                            },
+                            {
+                                "id": "909878693529260032", "createdBy": "826591951011844096", "affirmName": "魏春芳",
+                                "createdAt": "2026-04-28 14:26:55", "status": "AFFIRM",
+                                "patrolId": "909847531255631872", "orgId": "121616279827255296",
+                                "ltdId": "121616279827255296",
+                                "file": "/121616279827255296/260428/20995a2d5b5a41928d8bd7f62281efd3.png",
+                                "affirmInfo": {
+                                    "removePosition": false, "phone": "18272222809", "name": "18272222809",
+                                    "id": "826591951011844096", "removePost": false, "realname": "魏春芳"
+                                },
+                                "operatingDeck": "WEB"
+                            },
+                            {
+                                "id": "909852103399313408", "createdBy": "307586473564180480", "affirmName": "严如定",
+                                "createdAt": "2026-04-28 12:41:16", "status": "DONE",
+                                "patrolId": "909847531255631872", "describe": "司机班挡雨伞漏水已补好。",
+                                "orgId": "121616279827255296", "ltdId": "121616279827255296",
+                                "file": "/121616279827255296/260428/c01f4bdc75df485d98426785590b2912.jpg",
+                                "affirmInfo": {
+                                    "removePosition": false, "phone": "XXX", "name": "XXX",
+                                    "id": "307586473564180480", "removePost": false, "realname": "严如定"
+                                }, "helpful": 0,
+                                "operatingDeck": "CX"
+                            },
+                            {
+                                "id": "909847653246963712", "createdBy": "307586473564180480", "affirmName": "严如定",
+                                "createdAt": "2026-04-28 12:23:35", "status": "ING",
+                                "patrolId": "909847531255631872", "orgId": "121616279827255296",
+                                "ltdId": "121616279827255296", "affirmInfo": {
+                                    "removePosition": false, "phone": "XXX",
+                                    "name": "XXX", "id": "307586473564180480", "removePost": false, "realname": "严如定"
+                                },
+                                "operatingDeck": "CX"
+                            },
+                            {
+                                "id": "909847646393470976", "createdBy": "307586473564180480", "affirmName": "严如定",
+                                "createdAt": "2026-04-28 12:23:33", "status": "ROB",
+                                "patrolId": "909847531255631872", "users": ["307586473564180480"], "usersInfo": [
+                                    {
+                                        "removePosition": false, "phone": "XXX", "id": "307586473564180480", "type": "normal",
+                                        "userId": "307586473564180480", "removePost": false, "realname": "严如定"
+                                    }
+                                ], "orgId": "121616279827255296", "ltdId": "121616279827255296", "affirmInfo": {
+                                    "removePosition": false, "phone": "XXX", "name": "XXX", "id": "307586473564180480",
+                                    "removePost": false, "realname": "严如定"
+                                }, "operatingDeck": "CX"
+                            },
+                            {
+                                "id": "909847531293380608", "createdBy": "879033060065153024", "affirmName": "孟保萍",
+                                "createdAt": "2026-04-28 12:23:06", "status": "NOT",
+                                "patrolId": "909847531255631872", "groupName": "", "users": [], "usersInfo": [],
+                                "orgId": "121616279827255296", "ltdId": "121616279827255296", "groupInfo": {},
+                                "affirmInfo": {
+                                    "removePosition": false, "phone": "XXX", "name": "XXX",
+                                    "id": "879033060065153024", "removePost": false, "realname": "孟保萍"
+                                },
+                                "operatingDeck": "WEB"
+                            }
+                        ],
+                        "repairerNames": "严如定",
+                        "manhour": 0,
+                        "address": "红荔院区>发热门诊（6号楼）",
+                        "extOrder": {},
+                        "extOrderOr": {},
+                        "_status": "已回访",
+                        "_buttonState": 7,
+                        "_color": "#409EFF",
+                        "_platform": "电话盒子",
+                        "cellClassName": { "_status": "VISIT" },
+                        "_repairer": "严如定",
+                        "_repairerInfo": "严如定(XXX)",
+                        "_pausedTime": "07:00:36"
+                    }
+                ];
+                document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+                showToast('示例数据已加载，点击"解析数据"查看', 'info');
+            }
+
+            function clearAll() {
+                document.getElementById('jsonInput').value = '';
+                document.getElementById('tableWrapper').innerHTML =
+                    '<div class="empty-state"><span class="icon">📭</span><p>暂无数据，请粘贴JSON后点击"解析数据"</p></div>';
+                document.getElementById('previewCard').style.display = 'none';
+                document.getElementById('statsRow').style.display = 'none';
+                document.getElementById('btnExport').disabled = true;
+                parsedWorkOrders = [];
+                dynamicFlowColumns = [];
+                showToast('已清空全部数据', 'info');
+            }
+
+            // ==================== 全局暴露 ====================
+            window.parseAndPreview = parseAndPreview;
+            window.loadSampleData = loadSampleData;
+            window.clearAll = clearAll;
+            window.exportToExcel = exportToExcel;
+
+            // ==================== 快捷键支持 ====================
+            document.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    parseAndPreview();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    if (!document.getElementById('btnExport').disabled) {
+                        exportToExcel();
+                    }
+                }
+            });
+
+            // ==================== 初始化 ====================
+            console.log('✅ 工单数据解析导出工具已就绪');
+            console.log('💡 提示：粘贴JSON后按 Ctrl+Enter 快速解析，按 Ctrl+E 导出Excel');
+            console.log('📦 点击"加载示例数据"可查看演示');
+        })();
+    </script>
+</body>
+
+</html>
