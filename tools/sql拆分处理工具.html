@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量生成SQL文件工具 (无下载数量限制)</title>
+    <style>
+        * {margin: 0;padding: 0;box-sizing: border-box;}
+        body {padding: 20px;font-family: "微软雅黑", sans-serif;background: #f5f5f5;}
+        .container {max-width: 1000px;margin: 0 auto;background: #fff;padding: 30px;border-radius: 8px;box-shadow: 0 0 10px rgba(0,0,0,0.1);}
+        h2 {text-align: center;color: #333;margin-bottom: 20px;font-weight: normal;}
+        textarea {width: 100%;height: 400px;padding: 15px;font-size: 14px;line-height: 1.6;border: 1px solid #ddd;border-radius: 4px;resize: vertical;outline: none;}
+        textarea:focus {border-color: #409eff;}
+        button {width: 100%;height: 50px;margin-top: 20px;background: #409eff;color: #fff;border: none;border-radius: 4px;font-size: 16px;cursor: pointer;}
+        button:hover {background: #337ecc;}
+        button:disabled {background: #ccc;cursor: not-allowed;}
+        .tips {margin-top: 15px;color: #666;font-size: 13px;line-height: 1.5;}
+        .loading {margin-top:10px;text-align:center;color:#409eff;font-size:14px;display:none;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>批量生成SQL文件工具【每条SQL生成一个文件，文件名=表名.sql | 无下载数量限制】</h2>
+        <textarea id="sqlContent" placeholder="请粘贴多条SQL语句，每条语句格式如：select * from 表名 where 条件;  每条SQL会按表名生成独立的sql文件，支持批量粘贴，无视换行和空格"></textarea>
+        <button onclick="batchGenerateSqlFile()" id="downBtn">✅ 批量生成并下载所有SQL文件</button>
+        <div class="loading" id="loadingTxt">正在批量下载中，请稍候...已下载 <span id="downCount">0</span> 个文件</div>
+        <div class="tips">
+            ✔ 支持格式：select * from 表名 where 任意条件; （标准查询语句）<br>
+            ✔ 自动提取表名作为文件名，例如：select * from waste_box where xxx; → 生成 waste_box.sql<br>
+            ✔ 纯前端本地运行，无需网络/服务器，双击即用，数据不会上传任何服务器<br>
+            ✔ 兼容多条SQL、换行、多余空格，自动过滤空行和无效内容<br>
+            ✔ ✅已修复：无下载数量上限，支持几十上百条SQL全部下载完成
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 核心方法：批量生成SQL文件并下载 (修复下载数量限制问题)
+         * 解决浏览器并发下载拦截 → 改用延迟分批下载，无数量上限
+         */
+        function batchGenerateSqlFile() {
+            // 获取文本框内的所有内容
+            let sqlText = document.getElementById('sqlContent').value.trim();
+            if (!sqlText) {
+                alert('请粘贴需要生成的SQL语句！');
+                return;
+            }
+
+            // 正则表达式：精准匹配 select * from 表名 where ...; 格式的SQL
+            const sqlReg = /select\s+\*\s+from\s+([a-zA-Z0-9_]+)\s+.+?;/gis;
+            let matchResult;
+            let sqlList = [];
+
+            // 循环匹配所有符合格式的SQL语句
+            while ((matchResult = sqlReg.exec(sqlText)) !== null) {
+                const fullSql = matchResult[0].trim();
+                const tableName = matchResult[1].trim();
+                sqlList.push({ tableName, fullSql });
+            }
+
+            // 校验匹配结果
+            if (sqlList.length === 0) {
+                alert('未匹配到有效SQL语句，请检查格式是否为：select * from 表名 where 条件;');
+                return;
+            }
+
+            // ========== 核心修复：解决下载数量限制 ==========
+            const downBtn = document.getElementById('downBtn');
+            const loadingTxt = document.getElementById('loadingTxt');
+            const downCount = document.getElementById('downCount');
+            // 禁用按钮+显示加载中，防止重复点击
+            downBtn.disabled = true;
+            loadingTxt.style.display = 'block';
+            let currentIndex = 0;
+
+            // 分批下载：递归+延迟，每次下载1个，间隔100ms，避开浏览器拦截
+            function downloadSqlFile() {
+                if (currentIndex >= sqlList.length) {
+                    // 下载完成，恢复按钮状态+弹窗提示
+                    downBtn.disabled = false;
+                    loadingTxt.style.display = 'none';
+                    alert(`✅ 生成成功！共生成 ${sqlList.length} 个SQL文件，全部下载完成`);
+                    return;
+                }
+
+                // 获取当前待下载的SQL信息
+                const { tableName, fullSql } = sqlList[currentIndex];
+                // 创建UTF-8格式文件，防止中文乱码
+                const blob = new Blob([fullSql], { type: 'text/plain; charset=utf-8' });
+                const fileName = `${tableName}.sql`;
+
+                // 创建下载链接并触发下载
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = fileName;
+                a.click();
+                // 释放URL对象，优化性能
+                URL.revokeObjectURL(a.href);
+
+                // 更新下载数量
+                currentIndex++;
+                downCount.innerText = currentIndex;
+                // 延迟100毫秒下载下一个，核心解决浏览器拦截问题
+                setTimeout(downloadSqlFile, 100);
+            }
+
+            // 开始执行分批下载
+            downloadSqlFile();
+        }
+    </script>
+</body>
+</html>
