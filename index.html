@@ -240,6 +240,11 @@
         // 模拟目录结构，你只需要在这里维护你的项目路径
         const structure = [
             //   { type: 'file', name: 'psd.html', path: './psd.html' },
+             {
+                type: 'folder', name: '通用工具', children: [
+                    { type: 'file', name: '通用工具', path: './tools/通用工具.html' },
+                ]
+            },
             {
                 type: 'folder', name: '表格工具', children: [
                     { type: 'file', name: '工作表拆分工具', path: './excelTools/工作表拆分工具.html' },
@@ -250,6 +255,7 @@
                 type: 'folder', name: '工具', children: [
                     { type: 'file', name: 'psd解析器', path: './tools/PSD 图层结构解析器.html' },
                     { type: 'file', name: '图片排版工具', path: './tools/图片排版工具.html' },
+                    { type: 'file', name: '维修工单解析', path: './tools/orderExport.html' },
                 ]
             }
         ];
