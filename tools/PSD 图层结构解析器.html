@@ -295,7 +295,7 @@
     }
 
     .table-container {
-      max-height: 300px;
+      max-height: 500px;
       overflow: auto;
       border-radius: 16px;
       border: 1px solid #e2e8f0;
@@ -328,7 +328,7 @@
     }
 
     .textLayersTable th {
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      background: #f8fafc;
       padding: 14px 16px;
       text-align: left;
       font-weight: 600;
@@ -337,6 +337,8 @@
       top: 0;
       white-space: nowrap;
       color: #1e293b;
+      z-index: 10;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .textLayersTable th:first-child {
@@ -402,6 +404,175 @@
         gap: 12px;
       }
     }
+
+    /* 书名确认对话框样式 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .modal-dialog {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-body {
+      margin-bottom: 20px;
+    }
+
+    .modal-hint {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .book-name-option {
+      padding: 12px 16px;
+      margin: 8px 0;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .book-name-option:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .book-name-option.selected {
+      border-color: #3b82f6;
+      background: #dbeafe;
+    }
+
+    .book-name-option .option-label {
+      font-weight: 500;
+      color: #1e293b;
+    }
+
+    .book-name-option .option-preview {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 4px;
+      word-break: break-all;
+    }
+
+    .manual-input-section {
+      margin-top: 16px;
+    }
+
+    .manual-input-label {
+      font-size: 0.9rem;
+      color: #475569;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .manual-book-name-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .manual-book-name-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .modal-btn-cancel {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+
+    .modal-btn-confirm {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .modal-btn-confirm:hover {
+      background: #2563eb;
+    }
+
+    /* 可编辑单元格样式 */
+    .textLayersTable td.editable {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .textLayersTable td.editable:hover {
+      background: #dbeafe !important;
+    }
+
+    .textLayersTable td.editing {
+      padding: 0;
+    }
+
+    .cell-edit-input {
+      width: 100%;
+      height: 100%;
+      min-height: 40px;
+      padding: 10px 14px;
+      border: 2px solid #3b82f6;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      box-sizing: border-box;
+      background: white;
+    }
+
+    .cell-edit-hint {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-align: right;
+      padding: 4px;
+    }
   </style>
   <!-- SheetJS (用于Excel导出) -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -411,7 +582,7 @@
   <div class="container">
     <div class="header">
       <h1>🎨 PSD 智能解析</h1>
-      <p>上传 .psd · 预览图 + 图层结构 + 文本提取</p>
+      <p>上传 .psd · 预览图 + 图层结构 + 文本提取 · 支持批量解析 · 支持点击单元格修改内容</p>
     </div>
     <div class="upload-area">
       <label class="file-label" id="uploadLabel"><span>📁</span> 选择 PSD 文件<input type="file" id="psdUploader"
@@ -577,14 +748,70 @@
         }
         let html = '';
         allTextResults.forEach((item, index) => {
-          html += `<tr>
+          html += `<tr data-row="${index}">
               <td>${index + 1}</td>
-              <td>${escapeHtml(item.book)}</td>
-              <td>${escapeHtml(item.content)}</td>
+              <td class="editable" data-field="book" title="双击修改">${escapeHtml(item.book)}</td>
+              <td class="editable" data-field="content" title="双击修改">${escapeHtml(item.content)}</td>
               <td>${escapeHtml(item.source)}</td>
           </tr>`;
         });
         textLayersBody.innerHTML = html;
+        
+        // 绑定双击编辑事件
+        bindCellEditEvents();
+      }
+
+      // 绑定单元格双击编辑事件
+      function bindCellEditEvents() {
+        const editableCells = textLayersBody.querySelectorAll('.editable');
+        editableCells.forEach(cell => {
+          cell.addEventListener('dblclick', startCellEdit);
+        });
+      }
+
+      // 开始编辑单元格
+      function startCellEdit(e) {
+        const cell = e.target.closest('.editable');
+        if (!cell || cell.classList.contains('editing')) return;
+        
+        const row = parseInt(cell.closest('tr').getAttribute('data-row'));
+        const field = cell.getAttribute('data-field');
+        const currentValue = allTextResults[row][field];
+        
+        // 保存原始尺寸，创建输入框
+        cell.classList.add('editing');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'cell-edit-input';
+        input.value = currentValue;
+        
+        // 清空单元格并添加输入框
+        const originalContent = cell.innerHTML;
+        cell.innerHTML = '';
+        cell.appendChild(input);
+        input.focus();
+        input.select();
+        
+        // 结束编辑函数
+        function finishEdit(save) {
+          const newValue = input.value.trim();
+          if (save && newValue !== '') {
+            allTextResults[row][field] = newValue;
+          }
+          cell.classList.remove('editing');
+          renderTextTable();
+        }
+        
+        // 绑定事件
+        input.addEventListener('blur', () => finishEdit(true));
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            input.blur();
+          } else if (e.key === 'Escape') {
+            finishEdit(false);
+          }
+        });
       }
 
       // 主处理函数
@@ -611,7 +838,7 @@
         }
       }
 
-      function loadPsdFromFile(file) {
+      async function loadPsdFromFile(file) {
         if (!libReady || !PSDConstructor) { statusArea.innerHTML = '⚠️ 解析库未就绪，请等待或重试'; return; }
         if (!file) return;
         currentFileName = file.name; // 保存文件名
@@ -620,8 +847,9 @@
         docMetaDiv.innerHTML = '📄 解析中...';
         textLayersBody.innerHTML = '<tr><td colspan="3" class="loading-placeholder">⏳ 提取文本中...</td></tr>';
         
-        parseSingleFile(file).then(result => {
-          const { textData, bookName } = result;
+        try {
+          const result = await parseSingleFile(file);
+          let { textData, bookName } = result;
           
           // 使用parseSingleFile的结果来更新界面
           const psdInst = result.psdInst;
@@ -629,19 +857,23 @@
             processPsd(psdInst);
           }
           
+          // 显示书名选择对话框（当检测到多个候选时）
+          const defaultName = bookName || file.name.replace('.psd', '');
+          const selectedBookName = await showBookNameSelectionDialog(textData, defaultName, file.name);
+          
           // 更新当前书籍名称
-          currentBookName = bookName;
+          currentBookName = selectedBookName;
           
           // 将单文件解析结果添加到统一结果集
           const filteredTextData = textData.filter(item => {
             // 过滤掉书籍名称图层
-            return !(bookName && item.content.trim() === bookName);
+            return !(selectedBookName && item.content.trim() === selectedBookName);
           });
           
           // 添加单文件结果到统一结果集
           filteredTextData.forEach(item => {
             allTextResults.push({
-              book: bookName || currentFileName.replace('.psd', ''),
+              book: selectedBookName,
               content: item.content,
               source: '单文件'
             });
@@ -650,20 +882,17 @@
           // 渲染文本表格
           renderTextTable();
           
-        }).catch(err => {
+        } catch (err) {
           previewContainer.innerHTML = `<div class="error-msg">❌ ${err.message}</div>`;
           layersTreeDiv.innerHTML = '<div class="error-msg">解析失败</div>';
-          renderTextTable([]);
-        });
+          renderTextTable();
+        }
       }
 
       // 批量处理文件
       async function batchProcessFiles(files) {
         const batchProgress = document.getElementById('batchProgress');
-        const batchTableBody = document.getElementById('batchTableBody');
         batchProgress.style.display = 'flex';
-        batchResults = [];
-        batchTableBody.innerHTML = '';
 
         const total = files.length;
         let completed = 0;
@@ -676,16 +905,20 @@
             const result = await parseSingleFile(file);
             const { textData, bookName } = result;
             
+            // 显示书名选择对话框（当检测到多个候选时）
+            const defaultName = bookName || file.name.replace('.psd', '');
+            const selectedBookName = await showBookNameSelectionDialog(textData, defaultName, file.name);
+            
             // 过滤掉书籍名称图层，只保留其他文本图层
             textData.forEach(item => {
               // 如果当前图层是书籍名称图层，则跳过
-              if (bookName && item.content.trim() === bookName) {
+              if (selectedBookName && item.content.trim() === selectedBookName) {
                 return;
               }
               
               // 添加到统一结果集
               allTextResults.push({
-                book: bookName || file.name.replace('.psd', ''),
+                book: selectedBookName,
                 content: item.content,
                 source: '批量'
               });
@@ -732,47 +965,125 @@
         });
       }
 
-      // 识别书籍名称
-      function findBookName(textData) {
-        if (!textData || textData.length === 0) return null;
+      // 查找所有符合书籍名称模式的候选
+      function findBookNameCandidates(textData) {
+        if (!textData || textData.length === 0) return [];
         
-        // 优先查找包含《》·的图层
+        const candidates = [];
         const bookPatterns = [
           /《[^》]+》/,  // 包含《书名》
           /[^《》]*·[^《》]*/,  // 包含·分隔符
-          /^[^《》·]+$/,  // 不包含特殊字符的纯文本
         ];
         
-        // 按优先级查找
+        // 收集所有符合模式的候选
         for (const pattern of bookPatterns) {
           for (const item of textData) {
             if (item.content && pattern.test(item.content.trim())) {
-              return item.content.trim();
+              const content = item.content.trim();
+              if (!candidates.includes(content)) {
+                candidates.push(content);
+              }
             }
           }
         }
         
-        // 如果没有找到符合模式的，返回第一个非空文本图层
-        for (const item of textData) {
-          if (item.content && item.content.trim()) {
-            return item.content.trim();
+        // 如果没有符合模式的，添加所有非空文本
+        if (candidates.length === 0) {
+          for (const item of textData) {
+            if (item.content && item.content.trim()) {
+              candidates.push(item.content.trim());
+            }
           }
         }
         
-        return null;
+        return candidates;
       }
 
-      function renderBatchTable() {
-        const batchTableBody = document.getElementById('batchTableBody');
-        if (batchResults.length === 0) {
-          batchTableBody.innerHTML = '<tr><td colspan="3" class="no-text-msg">未检测到文本图层</td></tr>';
-          return;
-        }
-        let html = '';
-        batchResults.forEach((item, index) => {
-          html += `<tr><td>${index + 1}</td><td>${escapeHtml(item.book)}</td><td>${escapeHtml(item.content)}</td></tr>`;
+      // 识别书籍名称
+      function findBookName(textData) {
+        const candidates = findBookNameCandidates(textData);
+        if (candidates.length === 0) return null;
+        return candidates[0];
+      }
+
+      // 显示书名选择对话框
+      function showBookNameSelectionDialog(textData, defaultName, fileName) {
+        return new Promise((resolve) => {
+          const candidates = findBookNameCandidates(textData);
+          
+          // 如果只有一个候选或没有候选，直接返回
+          if (candidates.length <= 1) {
+            resolve(defaultName);
+            return;
+          }
+          
+          const modal = document.getElementById('bookNameModal');
+          const modalHeader = modal.querySelector('.modal-hint');
+          const optionsContainer = document.getElementById('bookNameOptions');
+          const manualInput = document.getElementById('manualBookNameInput');
+          const cancelBtn = document.getElementById('cancelBookNameBtn');
+          const confirmBtn = document.getElementById('confirmBookNameBtn');
+          
+          // 更新提示信息，显示当前文件名
+          if (fileName) {
+            modalHeader.innerHTML = `<strong>当前文件:${escapeHtml(fileName)}</strong> <br><span style="color:#64748b; font-size:0.85rem;">检测到多个可能的书籍名称图层，请选择一个或手动输入：</span>`;
+          }
+          
+          let selectedBookName = defaultName || '';
+          manualInput.value = '';
+          
+          // 生成选项
+          let optionsHtml = '';
+          candidates.forEach((candidate, index) => {
+            const isSelected = candidate === defaultName ? 'selected' : '';
+            optionsHtml += `
+              <div class="book-name-option ${isSelected}" data-name="${escapeHtml(candidate)}">
+                <div class="option-label">候选 ${index + 1}</div>
+                <div class="option-preview">${escapeHtml(candidate)}</div>
+              </div>
+            `;
+          });
+          optionsContainer.innerHTML = optionsHtml;
+          
+          // 绑定选项点击事件
+          optionsContainer.querySelectorAll('.book-name-option').forEach(option => {
+            option.addEventListener('click', () => {
+              optionsContainer.querySelectorAll('.book-name-option').forEach(o => o.classList.remove('selected'));
+              option.classList.add('selected');
+              selectedBookName = option.getAttribute('data-name');
+              manualInput.value = selectedBookName;
+            });
+          });
+          
+          // 手动输入事件
+          manualInput.addEventListener('input', () => {
+            optionsContainer.querySelectorAll('.book-name-option').forEach(o => o.classList.remove('selected'));
+            selectedBookName = manualInput.value;
+          });
+          
+          // 清理事件处理函数
+          function cleanup() {
+            modal.style.display = 'none';
+            cancelBtn.onclick = null;
+            confirmBtn.onclick = null;
+          }
+          
+          // 取消按钮
+          cancelBtn.onclick = () => {
+            cleanup();
+            resolve(defaultName);
+          };
+          
+          // 确认按钮
+          confirmBtn.onclick = () => {
+            const finalName = manualInput.value || selectedBookName || defaultName;
+            cleanup();
+            resolve(finalName);
+          };
+          
+          // 显示对话框
+          modal.style.display = 'flex';
         });
-        batchTableBody.innerHTML = html;
       }
 
       // 清空结果
@@ -782,30 +1093,9 @@
         currentBookName = '';
         renderTextTable();
         alert('✅ 结果已清空');
-      }
-
-         // 复制表格数据（制表符分隔，可直接粘贴到Excel）
-      function copyAllTableData() {
-        if (!batchResults || batchResults.length === 0) {
-          alert('没有文本数据可复制');
-          return;
-        }
-        const headers = ['序号', '图层内容', '文件名称'];
-        const rows = batchResults.map((item, index) => [index + 1, item.content, item.fileName]);
-        const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n');
-        navigator.clipboard.writeText(tsv).then(() => {
-          alert('表格已复制（制表符分隔）');
-        }).catch(err => {
-          alert('复制失败: ' + err);
-        });
-      }
-
-      // 清空批量结果
-      function clearBatchResults() {
-        batchResults = [];
-        document.getElementById('batchTableBody').innerHTML = '<tr><td colspan="3" class="no-text-msg">批量解析结果将显示在这里</td></tr>';
-        document.getElementById('batchProgress').style.display = 'none';
-        document.getElementById('batchProgress').innerHTML = '';
+        const batchProgress = document.getElementById('batchProgress');
+        batchProgress.style.display = 'none';
+        batchProgress.innerHTML = '';
       }
 
       // 核心：加载脚本并验证全局变量 PSD
@@ -993,6 +1283,28 @@
       tryLoadLibraries();
     })();
   </script>
+  
+  <!-- 书名确认对话框 -->
+  <div id="bookNameModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span>📚</span>
+        <span>选择或输入书籍名称</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-hint">检测到多个可能的书籍名称图层，请选择一个或手动输入：</div>
+        <div id="bookNameOptions"></div>
+        <div class="manual-input-section">
+          <label class="manual-input-label">或手动输入书籍名称：</label>
+          <input type="text" id="manualBookNameInput" class="manual-book-name-input" placeholder="请输入书籍名称...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" id="cancelBookNameBtn">取消</button>
+        <button class="modal-btn modal-btn-confirm" id="confirmBookNameBtn">确认</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

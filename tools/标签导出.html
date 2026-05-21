@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标签条形码批量生成导出工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        .tag-container {
+            width: 450px;
+            height: 300px;
+            border: 1px solid #ddd;
+            position: relative;
+            background-color: #fff;
+            overflow: hidden;
+        }
+        .tag-left {
+            width: 100px;
+            height: 100%;
+            background-color: #ffd900;
+            float: left;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .tag-right {
+            width: 350px;
+            height: 100%;
+            float: left;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .top-logos {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .barcode-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+        textarea{
+            resize: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-center font-semibold">Logo标签条形码批量生成导出工具</h1>
+
+        <!-- Logo上传 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Logo 设置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block mb-2 font-medium">左侧 Logo</label>
+                    <input type="file" id="leftLogoInput" accept="image/*" class="border p-2 w-full">
+                    <div id="leftLogoPreview" class="mt-2 w-32 h-32 border border-dashed flex items-center justify-content-center text-gray-400">
+                        预览
+                    </div>
+                </div>
+                <div>
+                    <label class="block mb-2 font-medium">顶部 Logo</label>
+                    <input type="file" id="topLogoInput" accept="image/*" class="border p-2 w-full">
+                    <div id="topLogoPreview" class="mt-2 w-64 h-32 border border-dashed flex items-center justify-content-center text-gray-400">
+                        预览
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量粘贴数据 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2">批量导入数据</h2>
+            <p class="text-sm text-gray-500 mb-3">格式：每行 编号 名称，示例：<br>123123 部门一<br>123124 部门二</p>
+            <textarea id="batchText" class="w-full border p-3 rounded h-32" placeholder="粘贴多行数据..."></textarea>
+            <div class="flex gap-3 mt-3">
+                <button id="parseBatchBtn" class="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600">解析批量数据</button>
+                <button id="clearAllBtn" class="bg-red-500 text-white px-5 py-2 rounded hover:bg-red-600">清空全部数据</button>
+                <button id="exportAllBtn" class="bg-green-500 text-white px-5 py-2 rounded hover:bg-green-600">批量导出所有标签</button>
+            </div>
+        </div>
+
+        <!-- 单条手动添加 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">单条手动添加</h2>
+            <div class="flex flex-wrap gap-3 items-center">
+                <input type="text" id="tagId" placeholder="条码编号" class="border p-2 w-40 rounded">
+                <input type="text" id="tagName" placeholder="部门/名称" class="border p-2 flex-1 min-w-[200px] rounded">
+                <button id="addDataBtn" class="bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600">添加</button>
+            </div>
+        </div>
+
+        <!-- 数据列表 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">已导入列表</h2>
+            <div id="dataList" class="max-h-48 overflow-y-auto border p-3 rounded text-sm">
+                <p class="text-gray-500">暂无数据</p>
+            </div>
+        </div>
+
+        <!-- 标签预览 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">标签预览</h2>
+            <div id="tagPreviewList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <p class="text-gray-500">暂无标签</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let leftLogoUrl = '';
+        let topLogoUrl = '';
+        let tagDataList = [];
+
+        // Logo 上传
+        document.getElementById('leftLogoInput').addEventListener('change', e=>{
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = ev=>{
+                leftLogoUrl = ev.target.result;
+                document.getElementById('leftLogoPreview').innerHTML = `<img src="${leftLogoUrl}" class="w-full h-full object-contain">`;
+                renderAll();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('topLogoInput').addEventListener('change', e=>{
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = ev=>{
+                topLogoUrl = ev.target.result;
+                document.getElementById('topLogoPreview').innerHTML = `<img src="${topLogoUrl}" class="w-full h-full object-contain">`;
+                renderAll();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 解析批量文本
+        document.getElementById('parseBatchBtn').addEventListener('click', ()=>{
+            const text = document.getElementById('batchText').value.trim();
+            if(!text){
+                alert('请粘贴批量数据');
+                return;
+            }
+            const lines = text.split('\n').filter(line=>line.trim());
+            let count = 0;
+            lines.forEach(line=>{
+                const arr = line.trim().split(/\s+/);
+                if(arr.length >=2){
+                    const code = arr[0];
+                    const name = arr.slice(1).join(' ');
+                    const exist = tagDataList.some(item=>item.code === code);
+                    if(!exist){
+                        tagDataList.push({
+                            id: Date.now() + Math.random(),
+                            code,
+                            name
+                        });
+                        count++;
+                    }
+                }
+            });
+            alert(`成功导入 ${count} 条数据`);
+            document.getElementById('batchText').value = '';
+            renderAll();
+        });
+
+        // 单条添加
+        document.getElementById('addDataBtn').addEventListener('click', ()=>{
+            const code = document.getElementById('tagId').value.trim();
+            const name = document.getElementById('tagName').value.trim();
+            if(!code || !name){
+                alert('请输入编号和名称');
+                return;
+            }
+            const exist = tagDataList.some(item=>item.code === code);
+            if(exist){
+                alert('该编号已存在');
+                return;
+            }
+            tagDataList.push({
+                id: Date.now() + Math.random(),
+                code,
+                name
+            });
+            document.getElementById('tagId').value = '';
+            document.getElementById('tagName').value = '';
+            renderAll();
+        });
+
+        // 清空全部
+        document.getElementById('clearAllBtn').addEventListener('click', ()=>{
+            if(confirm('确定清空所有数据？')){
+                tagDataList = [];
+                renderAll();
+            }
+        });
+
+        // 渲染列表+标签
+        function renderAll(){
+            renderDataList();
+            generateTagPreview();
+        }
+
+        // 数据列表渲染
+        function renderDataList(){
+            const el = document.getElementById('dataList');
+            if(tagDataList.length === 0){
+                el.innerHTML = '<p class="text-gray-500">暂无数据</p>';
+                return;
+            }
+            let html = '';
+            tagDataList.forEach(item=>{
+                html += `
+                <div class="flex justify-between items-center py-1 border-b">
+                    <span>${item.code} — ${item.name}</span>
+                    <button onclick="delItem('${item.id}')" class="text-red-500">删除</button>
+                </div>
+                `;
+            });
+            el.innerHTML = html;
+        }
+
+        window.delItem = function(id){
+            tagDataList = tagDataList.filter(item=>item.id != id);
+            renderAll();
+        };
+
+        // 生成标签预览
+        function generateTagPreview(){
+            const wrap = document.getElementById('tagPreviewList');
+            wrap.innerHTML = '';
+            if(tagDataList.length === 0){
+                wrap.innerHTML = '<p class="text-gray-500 col-span-2">暂无标签</p>';
+                return;
+            }
+            tagDataList.forEach(item=>{
+                const tagDomId = `tag_${item.id}`;
+                const barDomId = `bar_${item.id}`;
+                wrap.innerHTML += `
+                <div class="mb-4">
+                    <div id="${tagDomId}" class="tag-container mx-auto">
+                        <div class="tag-left">
+                            ${leftLogoUrl 
+                                ? `<img src="${leftLogoUrl}" class="w-24 h-24 object-contain mb-2">` 
+                                : `<div class="w-24 h-24 bg-gray-200 mb-2 rounded"></div>`
+                            }
+                            <span class="text-center font-medium text-sm">标识卡</span>
+                        </div>
+                        <div class="tag-right">
+                            <div class="top-logos">
+                                ${topLogoUrl 
+                                    ? `<img src="${topLogoUrl}" class="h-12 object-contain">` 
+                                    : `<div class="h-12 w-40 bg-gray-200 rounded"></div>`
+                                }
+                            </div>
+                            <div class="font-medium text-lg">${item.name}</div>
+                            <div class="barcode-container">
+                                <svg id="${barDomId}"></svg>
+                                <div class="mt-1 text-sm text-gray-600">${item.code}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center">
+                        <button onclick="exportSingle('${tagDomId}','${item.name}')" class="bg-green-500 text-white px-3 py-1 rounded text-sm">导出此图</button>
+                    </div>
+                </div>
+                `;
+            });
+
+            // 延时生成条码
+            setTimeout(()=>{
+                tagDataList.forEach(item=>{
+                    JsBarcode(`#bar_${item.id}`, item.code, {
+                        format:"CODE128",
+                        width:2,
+                        height:60,
+                        displayValue:false
+                    });
+                });
+            },200);
+        }
+
+        // 单张导出
+        window.exportSingle = function(domId,name){
+            const el = document.getElementById(domId);
+            html2canvas(el,{
+                scale:2,
+                useCORS:true,
+                backgroundColor:'#ffffff'
+            }).then(canvas=>{
+                const a = document.createElement('a');
+                a.download = `${name}_标签.png`;
+                a.href = canvas.toDataURL('image/png');
+                a.click();
+            });
+        };
+
+        // 批量全部导出
+        document.getElementById('exportAllBtn').addEventListener('click', async ()=>{
+            if(tagDataList.length === 0){
+                alert('暂无数据可导出');
+                return;
+            }
+            for(const item of tagDataList){
+                await new Promise(resolve=>{
+                    setTimeout(()=>{
+                        exportSingle(`tag_${item.id}`,item.name);
+                        resolve();
+                    },300);
+                });
+            }
+        });
+
+        renderAll();
+    </script>
+</body>
+</html>
