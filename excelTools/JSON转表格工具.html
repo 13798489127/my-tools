@@ -1,862 +1,1231 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
     <title>📋 JSON 表格预览 · 固定表头 · 筛选排序导出</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      body {
+        background: #f0f4fa;
+        min-height: 100vh;
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+      }
+      .app-container {
+        max-width: 1600px;
+        width: 100%;
+        background: white;
+        border-radius: 28px;
+        box-shadow: 0 20px 40px rgba(0, 20, 40, 0.06);
+        padding: 24px 28px;
+      }
+      h1 {
+        font-size: 1.9rem;
+        font-weight: 600;
+        color: #0b2b4a;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        color: #4a657d;
+        margin-bottom: 20px;
+        border-left: 4px solid #3b82f6;
+        padding-left: 16px;
+        font-weight: 400;
+      }
+      .json-input-area {
+        background: #f9fcff;
+        border-radius: 18px;
+        padding: 18px 20px;
+        border: 1px solid #dde5ed;
+        margin-bottom: 22px;
+      }
+      .json-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      textarea {
+        width: 100%;
+        min-height: 140px;
+        padding: 16px 18px;
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        border: 1.5px solid #ccdae8;
+        border-radius: 20px;
+        background: white;
+        resize: vertical;
+        outline: none;
+        transition: 0.15s;
+      }
+      textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+      .button-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      .column-selector {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        margin: 16px 0;
+      }
+
+      .column-selector-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .column-selector-title {
+        font-weight: 600;
+        color: #1e3a5f;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .column-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-height: 120px;
+        overflow-y: auto;
+        padding: 8px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .column-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f1f5f9;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+      }
+
+      .column-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #2563eb;
+      }
+
+      .column-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .btn-small {
+        background: white;
+        border: 1px solid #cbd5e1;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .btn-small:hover {
+        background: #f1f5f9;
+      }
+
+      .btn {
+        background: white;
+        border: 1.5px solid #cbd5e1;
+        padding: 8px 18px;
+        border-radius: 40px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      }
+      .btn-primary {
+        background: #1e3a5f;
+        border-color: #1e3a5f;
+        color: white;
+        box-shadow: 0 6px 10px rgba(30, 58, 95, 0.1);
+      }
+      .btn-primary:hover {
+        background: #143048;
+      }
+      .btn-outline-blue {
+        border-color: #bdd3f0;
+        background: #f5f9ff;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin: 18px 0 14px;
+      }
+      .search-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fafcff;
+        padding: 4px 10px 4px 18px;
+        border-radius: 40px;
+        border: 1px solid #d7e2ee;
+      }
+      .search-wrapper i {
+        color: #6b85a0;
+      }
+      #search-input {
+        border: none;
+        background: transparent;
+        padding: 8px 6px 8px 0;
+        font-size: 0.95rem;
+        width: 220px;
+        outline: none;
+      }
+      .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 8px;
+      }
+      .table-container {
+        border: 1px solid #e2eaf2;
+        border-radius: 20px;
+        background: white;
+        overflow: auto;
+        max-height: 520px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-top: 8px;
+        position: relative;
+      }
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.85rem;
+        min-width: 600px;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: #eef3fc;
+        color: #1e3a5f;
+        font-weight: 600;
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 2px solid #cbddec;
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        z-index: 10;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      }
+      th:hover {
+        background: #e0eaf6;
+      }
+      th i {
+        margin-left: 6px;
+        font-size: 0.75rem;
+        opacity: 0.7;
+      }
+      td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #e9eef4;
+        white-space: nowrap;
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      tr:hover td {
+        background: #f6faff;
+      }
+      .index-col {
+        font-weight: 500;
+        color: #4f6f8f;
+        background: #fafdff;
+      }
+      .footer-bar {
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .stats {
+        color: #436684;
+        font-size: 0.9rem;
+      }
+      .sort-indicator {
+        font-size: 0.7rem;
+        margin-left: 5px;
+      }
+      /* 简单icon模拟 */
+      .fa,
+      .fas {
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+      }
+      .far {
+        font-weight: 400;
+      }
+      @media (max-width: 700px) {
         body {
-            background: #f0f4fa;
-            min-height: 100vh;
-            padding: 24px;
-            display: flex;
-            justify-content: center;
+          padding: 12px;
         }
         .app-container {
-            max-width: 1600px;
-            width: 100%;
-            background: white;
-            border-radius: 28px;
-            box-shadow: 0 20px 40px rgba(0, 20, 40, 0.06);
-            padding: 24px 28px;
+          padding: 16px;
         }
-        h1 {
-            font-size: 1.9rem;
-            font-weight: 600;
-            color: #0b2b4a;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
-        }
-        .subtitle {
-            color: #4a657d;
-            margin-bottom: 20px;
-            border-left: 4px solid #3b82f6;
-            padding-left: 16px;
-            font-weight: 400;
-        }
-        .json-input-area {
-            background: #f9fcff;
-            border-radius: 18px;
-            padding: 18px 20px;
-            border: 1px solid #dde5ed;
-            margin-bottom: 22px;
-        }
-        .json-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-        textarea {
-            width: 100%;
-            min-height: 140px;
-            padding: 16px 18px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            border: 1.5px solid #ccdae8;
-            border-radius: 20px;
-            background: white;
-            resize: vertical;
-            outline: none;
-            transition: 0.15s;
-        }
-        textarea:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .column-selector {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 16px;
-            border: 1px solid #e2e8f0;
-            margin: 16px 0;
-        }
-
-        .column-selector-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .column-selector-title {
-            font-weight: 600;
-            color: #1e3a5f;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .column-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            max-height: 120px;
-            overflow-y: auto;
-            padding: 8px;
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .column-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #f1f5f9;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-        }
-
-        .column-item input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #2563eb;
-        }
-
-        .column-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .btn-small {
-            background: white;
-            border: 1px solid #cbd5e1;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .btn-small:hover {
-            background: #f1f5f9;
-        }
-
-        .btn {
-            background: white;
-            border: 1.5px solid #cbd5e1;
-            padding: 8px 18px;
-            border-radius: 40px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            color: #1e293b;
-            cursor: pointer;
-            transition: all 0.15s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .btn-primary {
-            background: #1e3a5f;
-            border-color: #1e3a5f;
-            color: white;
-            box-shadow: 0 6px 10px rgba(30,58,95,0.1);
-        }
-        .btn-primary:hover {
-            background: #143048;
-        }
-        .btn-outline-blue {
-            border-color: #bdd3f0;
-            background: #f5f9ff;
-        }
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            margin: 18px 0 14px;
-        }
-        .search-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #fafcff;
-            padding: 4px 10px 4px 18px;
-            border-radius: 40px;
-            border: 1px solid #d7e2ee;
-        }
-        .search-wrapper i {
-            color: #6b85a0;
-        }
-        #search-input {
-            border: none;
-            background: transparent;
-            padding: 8px 6px 8px 0;
-            font-size: 0.95rem;
-            width: 220px;
-            outline: none;
-        }
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-left: 8px;
-        }
-        .table-container {
-            border: 1px solid #e2eaf2;
-            border-radius: 20px;
-            background: white;
-            overflow: auto;
-            max-height: 520px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-            margin-top: 8px;
-            position: relative;
-        }
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 0.85rem;
-            min-width: 600px;
-        }
-        th {
-            position: sticky;
-            top: 0;
-            background: #eef3fc;
-            color: #1e3a5f;
-            font-weight: 600;
-            padding: 12px 14px;
-            text-align: left;
-            border-bottom: 2px solid #cbddec;
-            white-space: nowrap;
-            cursor: pointer;
-            user-select: none;
-            z-index: 10;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-        }
-        th:hover {
-            background: #e0eaf6;
-        }
-        th i {
-            margin-left: 6px;
-            font-size: 0.75rem;
-            opacity: 0.7;
-        }
-        td {
-            padding: 10px 14px;
-            border-bottom: 1px solid #e9eef4;
-            white-space: nowrap;
-            max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        tr:hover td {
-            background: #f6faff;
-        }
-        .index-col {
-            font-weight: 500;
-            color: #4f6f8f;
-            background: #fafdff;
-        }
-        .footer-bar {
-            margin-top: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .stats {
-            color: #436684;
-            font-size: 0.9rem;
-        }
-        .sort-indicator {
-            font-size: 0.7rem;
-            margin-left: 5px;
-        }
-        /* 简单icon模拟 */
-        .fa, .fas { font-family: 'Font Awesome 6 Free'; font-weight: 900; }
-        .far { font-weight: 400; }
-        @media (max-width: 700px) {
-            body { padding: 12px; }
-            .app-container { padding: 16px; }
-        }
+      }
     </style>
     <!-- Font Awesome (用于图标) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
     <!-- SheetJS (用于Excel导出) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-</head>
-<body>
-<div class="app-container">
-    <h1>
-        <i class="fas fa-table" style="color:#2563eb;"></i> 
+  </head>
+  <body>
+    <div class="app-container">
+      <h1>
+        <i class="fas fa-table" style="color: #2563eb"></i>
         JSON 表格预览 · 固定表头
-        <span style="font-size:0.9rem; font-weight:400; margin-left:auto; background:#eef3fa; padding:4px 14px; border-radius:40px;">
-            <i class="far fa-file-code"></i> 对象数组
+        <span
+          style="
+            font-size: 0.9rem;
+            font-weight: 400;
+            margin-left: auto;
+            background: #eef3fa;
+            padding: 4px 14px;
+            border-radius: 40px;
+          "
+        >
+          <i class="far fa-file-code"></i> 对象数组
         </span>
-    </h1>
-    <div class="subtitle">粘贴 JSON 数组 → 自动组合所有 key 为表头 · 支持筛选/排序/序号/复制/导出</div>
+      </h1>
+      <div class="subtitle">
+        粘贴 JSON 数组 → 自动组合所有 key 为表头 · 支持筛选/排序/序号/复制/导出
+      </div>
 
-    <!-- JSON 输入区 -->
-    <div class="json-input-area">
+      <!-- JSON 输入区 -->
+      <div class="json-input-area">
         <div class="json-header">
-            <span style="font-weight:600; color:#1e3a5f;"><i class="far fa-keyboard"></i> 数据源 (对象数组)</span>
-            <div class="button-group">
-                <button class="btn btn-outline-blue" id="sample-btn"><i class="far fa-file"></i> 加载示例</button>
-                <button class="btn btn-primary" id="apply-btn"><i class="fas fa-sync-alt"></i> 应用并刷新表格</button>
-            </div>
+          <span style="font-weight: 600; color: #1e3a5f"
+            ><i class="far fa-keyboard"></i> 数据源 (对象数组)</span
+          >
+          <div class="button-group">
+            <button class="btn btn-outline-blue" id="sample-btn">
+              <i class="far fa-file"></i> 加载示例
+            </button>
+            <button class="btn btn-primary" id="apply-btn">
+              <i class="fas fa-sync-alt"></i> 应用并刷新表格
+            </button>
+          </div>
         </div>
-        <textarea id="json-input" placeholder='[ { "id": 1, "name": "张三", "age": 28 }, { "id": 2, "name": "李四", "age": 32 } ]'>[
+        <textarea
+          id="json-input"
+          placeholder='[ { "id": 1, "name": "张三", "age": 28 }, { "id": 2, "name": "李四", "age": 32 } ]'
+        >
+[
   { "id": 1, "name": "张三", "department": "产品部", "salary": 12000 },
   { "id": 2, "name": "李四", "department": "研发部", "salary": 15000, "city": "北京" },
   { "id": 3, "name": "王五", "department": "市场部", "salary": 13000, "city": "上海" },
   { "id": 4, "name": "赵六", "department": "研发部", "salary": 16000, "level": "P2" }
-]</textarea>
-        <div style="font-size:0.8rem; color:#5f7d9c; margin-top:6px;"><i class="far fa-lightbulb"></i> 支持不规则结构，会自动合并所有字段作为列。点击表头排序，搜索框全局筛选。</div>
-    </div>
+]</textarea
+        >
+        <div style="font-size: 0.8rem; color: #5f7d9c; margin-top: 6px">
+          <i class="far fa-lightbulb"></i>
+          支持不规则结构，会自动合并所有字段作为列。点击表头排序，搜索框全局筛选。
+        </div>
+      </div>
 
-    <!-- 列选择器 -->
-    <div class="column-selector" id="column-selector" style="display: none;">
+      <!-- 列选择器 -->
+      <div class="column-selector" id="column-selector" style="display: none">
         <div class="column-selector-header">
-            <div class="column-selector-title">
-                <i class="fas fa-columns"></i>
-                <span>列选择器</span>
-                <span id="selected-count" style="font-size:0.8rem; color:#64748b; margin-left:8px;">(0/0)</span>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn-small" id="select-all-btn">全选</button>
-                <button class="btn-small" id="select-none-btn">全不选</button>
-            </div>
+          <div class="column-selector-title">
+            <i class="fas fa-columns"></i>
+            <span>列选择器</span>
+            <span
+              id="selected-count"
+              style="font-size: 0.8rem; color: #64748b; margin-left: 8px"
+              >(0/0)</span
+            >
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button class="btn-small" id="select-all-btn">全选</button>
+            <button class="btn-small" id="select-none-btn">全不选</button>
+          </div>
         </div>
         <div class="column-list" id="column-list">
-            <div style="color:#64748b; font-style:italic; padding:20px; text-align:center;">请先加载数据</div>
+          <div
+            style="
+              color: #64748b;
+              font-style: italic;
+              padding: 20px;
+              text-align: center;
+            "
+          >
+            请先加载数据
+          </div>
         </div>
         <div class="column-actions">
-            <button class="btn-small" id="copy-columns-btn">📋 复制列名</button>
-            <button class="btn-small" id="export-columns-btn">📥 导出列配置</button>
-            <button class="btn-small" id="apply-columns-btn">✅ 应用选择</button>
+          <button class="btn-small" id="copy-columns-btn">📋 复制列名</button>
+          <button class="btn-small" id="export-columns-btn">
+            📥 导出列配置
+          </button>
+          <button class="btn-small" id="apply-columns-btn">✅ 应用选择</button>
         </div>
-    </div>
+      </div>
 
-    <!-- 工具栏：搜索、序号列、复制/导出 -->
-    <div class="toolbar">
-        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <div class="search-wrapper">
-                <i class="fas fa-search"></i>
-                <input type="text" id="search-input" placeholder="筛选表格 (任意文本)" autocomplete="off">
-                <button class="btn btn-sm" id="clear-search" style="border:none; background:transparent; padding:4px 8px;" title="清除">✕</button>
-            </div>
-            <div class="checkbox-item">
-                <input type="checkbox" id="add-index-col" checked> 
-                <label for="add-index-col"><i class="far fa-list-ol"></i> 显示序号列</label>
-            </div>
-            <button class="btn" id="toggle-column-selector"><i class="fas fa-columns"></i> 列选择器</button>
+      <!-- 工具栏：搜索、序号列、复制/导出 -->
+      <div class="toolbar">
+        <div
+          style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap"
+        >
+          <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="筛选表格 (任意文本)"
+              autocomplete="off"
+            />
+            <button
+              class="btn btn-sm"
+              id="clear-search"
+              style="border: none; background: transparent; padding: 4px 8px"
+              title="清除"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="add-index-col" checked />
+            <label for="add-index-col"
+              ><i class="far fa-list-ol"></i> 显示序号列</label
+            >
+          </div>
+          <button class="btn" id="toggle-column-selector">
+            <i class="fas fa-columns"></i> 列选择器
+          </button>
         </div>
         <div class="button-group">
-            <button class="btn" id="copy-table-btn"><i class="far fa-copy"></i> 复制表格</button>
-            <button class="btn btn-outline-blue" id="export-xlsx-btn"><i class="fas fa-file-excel"></i> 导出 XLSX</button>
+          <button class="btn" id="copy-table-btn">
+            <i class="far fa-copy"></i> 复制表格
+          </button>
+          <button class="btn btn-outline-blue" id="export-xlsx-btn">
+            <i class="fas fa-file-excel"></i> 导出 XLSX
+          </button>
         </div>
-    </div>
+      </div>
 
-    <!-- 表格容器 (固定表头) -->
-    <div class="table-container" id="table-wrapper">
+      <!-- 表格容器 (固定表头) -->
+      <div class="table-container" id="table-wrapper">
         <table id="data-table">
-            <thead id="table-header">
-                <!-- 动态生成 -->
-            </thead>
-            <tbody id="table-body">
-                <!-- 动态数据 -->
-            </tbody>
+          <thead id="table-header">
+            <!-- 动态生成 -->
+          </thead>
+          <tbody id="table-body">
+            <!-- 动态数据 -->
+          </tbody>
         </table>
-    </div>
+      </div>
 
-    <!-- 底部状态 -->
-    <div class="footer-bar">
+      <!-- 底部状态 -->
+      <div class="footer-bar">
         <div class="stats" id="stats-info">共 0 行数据 (筛选后)</div>
-        <div style="display:flex; gap:10px;">
-            <span style="font-size:0.8rem; color:#6b85a0;"><i class="far fa-arrow-up"></i><i class="far fa-arrow-down"></i> 点击表头排序</span>
+        <div style="display: flex; gap: 10px">
+          <span style="font-size: 0.8rem; color: #6b85a0"
+            ><i class="far fa-arrow-up"></i
+            ><i class="far fa-arrow-down"></i> 点击表头排序</span
+          >
         </div>
-    </div>
-</div>
+      </div>
 
-<script>
-    (function(){
+      <!-- 大文件模式：导入 JSON → 直接导出 XLSX (Web Worker，不渲染表格) -->
+      <div
+        class="json-input-area"
+        style="margin-top: 22px; border-color: #c7ddf5; background: #f5f9ff"
+      >
+        <div class="json-header">
+          <span style="font-weight: 600; color: #1e3a5f">
+            <i class="fas fa-bolt" style="color: #f59e0b"></i>
+            大文件模式：导入 JSON → 直接导出 XLSX
+            <span
+              style="
+                font-size: 0.78rem;
+                font-weight: 400;
+                color: #5f7d9c;
+                margin-left: 6px;
+              "
+              >(不渲染表格，后台 Worker 处理，避免页面卡死)</span
+            >
+          </span>
+          <div class="button-group">
+            <button class="btn btn-outline-blue" id="pick-json-btn">
+              <i class="fas fa-file-import"></i> 选择 JSON 文件
+            </button>
+            <input
+              type="file"
+              id="json-file-input"
+              accept=".json,application/json"
+              style="display: none"
+            />
+          </div>
+        </div>
+        <div
+          id="bigfile-status"
+          style="font-size: 0.85rem; color: #5f7d9c; margin-top: 8px"
+        >
+          <i class="far fa-info-circle"></i> 适合处理上万行数据。整个解析与 XLSX
+          生成过程在后台 Worker 中进行，不会阻塞页面。
+        </div>
+        <div id="progress-wrap" style="display: none; margin-top: 12px">
+          <div
+            style="
+              height: 8px;
+              background: #e6eef9;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <div
+              id="progress-bar"
+              style="
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #3b82f6, #1e3a5f);
+                transition: width 0.2s;
+              "
+            ></div>
+          </div>
+          <div
+            id="progress-text"
+            style="font-size: 0.8rem; color: #436684; margin-top: 6px"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
         "use strict";
 
         // ---------- 全局状态 ----------
-        let originalData = [];            // 原始对象数组
-        let currentColumns = [];          // 当前显示的列 (key数组)
-        let filteredData = [];            // 经过筛选后的数据
-        let sortState = { column: null, direction: 'asc' }; // 'asc', 'desc', null
-        
+        let originalData = []; // 原始对象数组
+        let currentColumns = []; // 当前显示的列 (key数组)
+        let filteredData = []; // 经过筛选后的数据
+        let sortState = { column: null, direction: "asc" }; // 'asc', 'desc', null
+
         // DOM 元素
-        const jsonInput = document.getElementById('json-input');
-        const applyBtn = document.getElementById('apply-btn');
-        const sampleBtn = document.getElementById('sample-btn');
-        const searchInput = document.getElementById('search-input');
-        const clearSearchBtn = document.getElementById('clear-search');
-        const addIndexCheck = document.getElementById('add-index-col');
-        const tableHeader = document.getElementById('table-header');
-        const tableBody = document.getElementById('table-body');
-        const statsInfo = document.getElementById('stats-info');
-        const copyTableBtn = document.getElementById('copy-table-btn');
-        const exportXlsxBtn = document.getElementById('export-xlsx-btn');
-        
+        const jsonInput = document.getElementById("json-input");
+        const applyBtn = document.getElementById("apply-btn");
+        const sampleBtn = document.getElementById("sample-btn");
+        const searchInput = document.getElementById("search-input");
+        const clearSearchBtn = document.getElementById("clear-search");
+        const addIndexCheck = document.getElementById("add-index-col");
+        const tableHeader = document.getElementById("table-header");
+        const tableBody = document.getElementById("table-body");
+        const statsInfo = document.getElementById("stats-info");
+        const copyTableBtn = document.getElementById("copy-table-btn");
+        const exportXlsxBtn = document.getElementById("export-xlsx-btn");
+
         // 列选择器相关元素
-        const columnSelector = document.getElementById('column-selector');
-        const toggleColumnSelectorBtn = document.getElementById('toggle-column-selector');
-        const columnList = document.getElementById('column-list');
-        const selectedCount = document.getElementById('selected-count');
-        const selectAllBtn = document.getElementById('select-all-btn');
-        const selectNoneBtn = document.getElementById('select-none-btn');
-        const copyColumnsBtn = document.getElementById('copy-columns-btn');
-        const exportColumnsBtn = document.getElementById('export-columns-btn');
-        const applyColumnsBtn = document.getElementById('apply-columns-btn');
-        
+        const columnSelector = document.getElementById("column-selector");
+        const toggleColumnSelectorBtn = document.getElementById(
+          "toggle-column-selector",
+        );
+        const columnList = document.getElementById("column-list");
+        const selectedCount = document.getElementById("selected-count");
+        const selectAllBtn = document.getElementById("select-all-btn");
+        const selectNoneBtn = document.getElementById("select-none-btn");
+        const copyColumnsBtn = document.getElementById("copy-columns-btn");
+        const exportColumnsBtn = document.getElementById("export-columns-btn");
+        const applyColumnsBtn = document.getElementById("apply-columns-btn");
+
         // ---------- 辅助函数：解析JSON ----------
         function parseJSONInput(str) {
-            try {
-                const trimmed = str.trim();
-                if (!trimmed) return [];
-                // 使用 Function 构造器或 JSON.parse，更安全用 JSON.parse
-                const parsed = JSON.parse(trimmed);
-                if (!Array.isArray(parsed)) {
-                    alert('数据必须是对象数组 (数组格式)');
-                    return null;
-                }
-                // 过滤掉非对象元素
-                return parsed.filter(item => item && typeof item === 'object' && !Array.isArray(item));
-            } catch (e) {
-                alert('JSON 解析错误: ' + e.message);
-                return null;
+          try {
+            const trimmed = str.trim();
+            if (!trimmed) return [];
+            // 使用 Function 构造器或 JSON.parse，更安全用 JSON.parse
+            const parsed = JSON.parse(trimmed);
+            if (!Array.isArray(parsed)) {
+              alert("数据必须是对象数组 (数组格式)");
+              return null;
             }
+            // 过滤掉非对象元素
+            return parsed.filter(
+              (item) =>
+                item && typeof item === "object" && !Array.isArray(item),
+            );
+          } catch (e) {
+            alert("JSON 解析错误: " + e.message);
+            return null;
+          }
         }
 
         // ---------- 提取所有可能的键 (组合所有对象的key) ----------
         function getAllKeys(data) {
-            const keySet = new Set();
-            data.forEach(obj => {
-                Object.keys(obj).forEach(key => keySet.add(key));
-            });
-            return Array.from(keySet).sort(); // 排序让表头稳定
+          const keySet = new Set();
+          data.forEach((obj) => {
+            Object.keys(obj).forEach((key) => keySet.add(key));
+          });
+          return Array.from(keySet).sort(); // 排序让表头稳定
         }
 
         // ---------- 获取单元格显示值 (处理null/undefined/对象) ----------
         function getCellValue(obj, key) {
-            const val = obj[key];
-            if (val === null || val === undefined) return '';
-            if (typeof val === 'object') {
-                return JSON.stringify(val);
-            }
-            return String(val);
+          const val = obj[key];
+          if (val === null || val === undefined) return "";
+          if (typeof val === "object") {
+            return JSON.stringify(val);
+          }
+          return String(val);
         }
 
         // ---------- 筛选逻辑 (全局文本匹配) ----------
         function filterData(data, columns, searchTerm) {
-            if (!searchTerm.trim()) return data.slice();
-            const term = searchTerm.trim().toLowerCase();
-            return data.filter(obj => {
-                return columns.some(col => {
-                    const cellText = getCellValue(obj, col).toLowerCase();
-                    return cellText.includes(term);
-                });
+          if (!searchTerm.trim()) return data.slice();
+          const term = searchTerm.trim().toLowerCase();
+          return data.filter((obj) => {
+            return columns.some((col) => {
+              const cellText = getCellValue(obj, col).toLowerCase();
+              return cellText.includes(term);
             });
+          });
         }
 
         // ---------- 排序逻辑 ----------
         function sortData(data, column, direction) {
-            if (!column || !direction) return data.slice();
-            const sorted = data.slice();
-            sorted.sort((a, b) => {
-                let valA = getCellValue(a, column);
-                let valB = getCellValue(b, column);
-                
-                // 尝试数字比较
-                const numA = parseFloat(valA);
-                const numB = parseFloat(valB);
-                const isNumber = !isNaN(numA) && !isNaN(numB) && isFinite(numA) && isFinite(numB);
-                
-                let compareResult;
-                if (isNumber) {
-                    compareResult = numA - numB;
-                } else {
-                    compareResult = valA.localeCompare(valB, 'zh-CN');
-                }
-                return direction === 'asc' ? compareResult : -compareResult;
-            });
-            return sorted;
+          if (!column || !direction) return data.slice();
+          const sorted = data.slice();
+          sorted.sort((a, b) => {
+            let valA = getCellValue(a, column);
+            let valB = getCellValue(b, column);
+
+            // 尝试数字比较
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+            const isNumber =
+              !isNaN(numA) && !isNaN(numB) && isFinite(numA) && isFinite(numB);
+
+            let compareResult;
+            if (isNumber) {
+              compareResult = numA - numB;
+            } else {
+              compareResult = valA.localeCompare(valB, "zh-CN");
+            }
+            return direction === "asc" ? compareResult : -compareResult;
+          });
+          return sorted;
         }
 
         // ---------- 渲染表格 (完全基于状态) ----------
         function renderTable() {
-            // 获取筛选后数据并排序
-            const searchTerm = searchInput.value;
-            let displayData = filterData(originalData, currentColumns, searchTerm);
-            
-            // 应用排序
-            if (sortState.column && sortState.direction) {
-                displayData = sortData(displayData, sortState.column, sortState.direction);
-            }
-            filteredData = displayData;
-            
-            const showIndex = addIndexCheck.checked;
-            
-            // 生成表头
-            let headerHtml = '';
-            if (showIndex) {
-                headerHtml += `<th style="width:60px; cursor:default;">#</th>`;
-            }
-            currentColumns.forEach(col => {
-                const isSorted = sortState.column === col;
-                const sortIcon = isSorted ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : '';
-                headerHtml += `<th data-column="${col}" title="点击排序">${col}${sortIcon}</th>`;
+          // 获取筛选后数据并排序
+          const searchTerm = searchInput.value;
+          let displayData = filterData(
+            originalData,
+            currentColumns,
+            searchTerm,
+          );
+
+          // 应用排序
+          if (sortState.column && sortState.direction) {
+            displayData = sortData(
+              displayData,
+              sortState.column,
+              sortState.direction,
+            );
+          }
+          filteredData = displayData;
+
+          const showIndex = addIndexCheck.checked;
+
+          // 生成表头
+          let headerHtml = "";
+          if (showIndex) {
+            headerHtml += `<th style="width:60px; cursor:default;">#</th>`;
+          }
+          currentColumns.forEach((col) => {
+            const isSorted = sortState.column === col;
+            const sortIcon = isSorted
+              ? sortState.direction === "asc"
+                ? " ↑"
+                : " ↓"
+              : "";
+            headerHtml += `<th data-column="${col}" title="点击排序">${col}${sortIcon}</th>`;
+          });
+          tableHeader.innerHTML = headerHtml;
+
+          // 生成表体
+          let bodyHtml = "";
+          if (displayData.length === 0) {
+            const colspan = showIndex
+              ? currentColumns.length + 1
+              : currentColumns.length;
+            bodyHtml = `<tr><td colspan="${colspan}" style="text-align:center; padding:40px; color:#7a95b0;">暂无数据 / 无匹配结果</td></tr>`;
+          } else {
+            displayData.forEach((obj, idx) => {
+              bodyHtml += "<tr>";
+              if (showIndex) {
+                bodyHtml += `<td class="index-col">${idx + 1}</td>`;
+              }
+              currentColumns.forEach((col) => {
+                const val = getCellValue(obj, col);
+                bodyHtml += `<td title="${val.replace(/"/g, "&quot;")}">${val}</td>`;
+              });
+              bodyHtml += "</tr>";
             });
-            tableHeader.innerHTML = headerHtml;
-            
-            // 生成表体
-            let bodyHtml = '';
-            if (displayData.length === 0) {
-                const colspan = showIndex ? currentColumns.length + 1 : currentColumns.length;
-                bodyHtml = `<tr><td colspan="${colspan}" style="text-align:center; padding:40px; color:#7a95b0;">暂无数据 / 无匹配结果</td></tr>`;
-            } else {
-                displayData.forEach((obj, idx) => {
-                    bodyHtml += '<tr>';
-                    if (showIndex) {
-                        bodyHtml += `<td class="index-col">${idx + 1}</td>`;
-                    }
-                    currentColumns.forEach(col => {
-                        const val = getCellValue(obj, col);
-                        bodyHtml += `<td title="${val.replace(/"/g, '&quot;')}">${val}</td>`;
-                    });
-                    bodyHtml += '</tr>';
-                });
-            }
-            tableBody.innerHTML = bodyHtml;
-            
-            // 更新统计
-            statsInfo.textContent = `共 ${displayData.length} 行 (总计 ${originalData.length} 条原始数据)`;
-            
-            // 重新绑定表头点击事件 (事件委托)
+          }
+          tableBody.innerHTML = bodyHtml;
+
+          // 更新统计
+          statsInfo.textContent = `共 ${displayData.length} 行 (总计 ${originalData.length} 条原始数据)`;
+
+          // 重新绑定表头点击事件 (事件委托)
         }
 
         // ---------- 表头点击排序 (事件委托) ----------
-        tableHeader.addEventListener('click', (e) => {
-            const th = e.target.closest('th');
-            if (!th) return;
-            const column = th.dataset.column;
-            if (!column) return; // 序号列
-            
-            if (sortState.column === column) {
-                // 循环: asc -> desc -> 取消排序
-                if (sortState.direction === 'asc') {
-                    sortState.direction = 'desc';
-                } else if (sortState.direction === 'desc') {
-                    sortState.column = null;
-                    sortState.direction = null;
-                }
-            } else {
-                sortState.column = column;
-                sortState.direction = 'asc';
+        tableHeader.addEventListener("click", (e) => {
+          const th = e.target.closest("th");
+          if (!th) return;
+          const column = th.dataset.column;
+          if (!column) return; // 序号列
+
+          if (sortState.column === column) {
+            // 循环: asc -> desc -> 取消排序
+            if (sortState.direction === "asc") {
+              sortState.direction = "desc";
+            } else if (sortState.direction === "desc") {
+              sortState.column = null;
+              sortState.direction = null;
             }
-            renderTable();
+          } else {
+            sortState.column = column;
+            sortState.direction = "asc";
+          }
+          renderTable();
         });
 
         // ---------- 刷新列选择器 ----------
         function refreshColumnSelector() {
-            if (currentColumns.length === 0) {
-                columnList.innerHTML = '<div style="color:#64748b; font-style:italic; padding:20px; text-align:center;">请先加载数据</div>';
-                columnSelector.style.display = 'none';
-                return;
-            }
-            
-            let html = '';
-            currentColumns.forEach((col, index) => {
-                const isSelected = currentColumns.includes(col);
-                html += `
+          if (currentColumns.length === 0) {
+            columnList.innerHTML =
+              '<div style="color:#64748b; font-style:italic; padding:20px; text-align:center;">请先加载数据</div>';
+            columnSelector.style.display = "none";
+            return;
+          }
+
+          let html = "";
+          currentColumns.forEach((col, index) => {
+            const isSelected = currentColumns.includes(col);
+            html += `
                     <div class="column-item">
-                        <input type="checkbox" id="col-${index}" data-column="${col}" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" id="col-${index}" data-column="${col}" ${isSelected ? "checked" : ""}>
                         <label for="col-${index}" style="cursor:pointer;">${col}</label>
                     </div>
                 `;
-            });
-            
-            columnList.innerHTML = html;
-            updateSelectedCount();
-            
-            // 绑定复选框事件
-            columnList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.addEventListener('change', updateSelectedCount);
+          });
+
+          columnList.innerHTML = html;
+          updateSelectedCount();
+
+          // 绑定复选框事件
+          columnList
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((checkbox) => {
+              checkbox.addEventListener("change", updateSelectedCount);
             });
         }
 
         // ---------- 更新选中列计数 ----------
         function updateSelectedCount() {
-            const checkboxes = columnList.querySelectorAll('input[type="checkbox"]');
-            const selected = Array.from(checkboxes).filter(cb => cb.checked).length;
-            const total = checkboxes.length;
-            selectedCount.textContent = `(${selected}/${total})`;
+          const checkboxes = columnList.querySelectorAll(
+            'input[type="checkbox"]',
+          );
+          const selected = Array.from(checkboxes).filter(
+            (cb) => cb.checked,
+          ).length;
+          const total = checkboxes.length;
+          selectedCount.textContent = `(${selected}/${total})`;
         }
 
         // ---------- 获取选中的列 ----------
         function getSelectedColumns() {
-            const checkboxes = columnList.querySelectorAll('input[type="checkbox"]:checked');
-            return Array.from(checkboxes).map(cb => cb.dataset.column);
+          const checkboxes = columnList.querySelectorAll(
+            'input[type="checkbox"]:checked',
+          );
+          return Array.from(checkboxes).map((cb) => cb.dataset.column);
         }
 
         // ---------- 刷新全部：解析JSON -> 提取列 -> 重置排序 -> 渲染 ----------
         function refreshFromJSON() {
-            const raw = jsonInput.value;
-            const parsed = parseJSONInput(raw);
-            if (parsed === null) return;
-            
-            originalData = parsed;
-            if (originalData.length === 0) {
-                currentColumns = [];
-                sortState = { column: null, direction: null };
-                renderTable();
-                refreshColumnSelector();
-                return;
-            }
-            
-            // 提取所有键
-            currentColumns = getAllKeys(originalData);
-            
-            // 重置排序 (不清除搜索)
+          const raw = jsonInput.value;
+          const parsed = parseJSONInput(raw);
+          if (parsed === null) return;
+
+          originalData = parsed;
+          if (originalData.length === 0) {
+            currentColumns = [];
             sortState = { column: null, direction: null };
-            
             renderTable();
             refreshColumnSelector();
+            return;
+          }
+
+          // 提取所有键
+          currentColumns = getAllKeys(originalData);
+
+          // 重置排序 (不清除搜索)
+          sortState = { column: null, direction: null };
+
+          renderTable();
+          refreshColumnSelector();
         }
 
         // ---------- 事件绑定 ----------
-        applyBtn.addEventListener('click', refreshFromJSON);
-        
-        sampleBtn.addEventListener('click', () => {
-            const sample = `[
+        applyBtn.addEventListener("click", refreshFromJSON);
+
+        sampleBtn.addEventListener("click", () => {
+          const sample = `[
   { "id": 1, "name": "张三", "department": "产品部", "salary": 12000, "city": "深圳" },
   { "id": 2, "name": "李四", "department": "研发部", "salary": 15000, "city": "北京" },
   { "id": 3, "name": "王五", "department": "市场部", "salary": 13000, "city": "上海", "level": "P1" },
   { "id": 4, "name": "赵六", "department": "研发部", "salary": 16000, "level": "P2", "city": "杭州" },
   { "id": 5, "name": "孙七", "department": "产品部", "salary": 14000 }
 ]`;
-            jsonInput.value = sample;
-            refreshFromJSON();
+          jsonInput.value = sample;
+          refreshFromJSON();
         });
 
         // 搜索输入
-        searchInput.addEventListener('input', () => {
-            // 重置排序? 通常保留排序，但可以保留。仅重新渲染
-            renderTable();
+        searchInput.addEventListener("input", () => {
+          // 重置排序? 通常保留排序，但可以保留。仅重新渲染
+          renderTable();
         });
-        
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            renderTable();
+
+        clearSearchBtn.addEventListener("click", () => {
+          searchInput.value = "";
+          renderTable();
         });
 
         // 序号列切换
-        addIndexCheck.addEventListener('change', renderTable);
+        addIndexCheck.addEventListener("change", renderTable);
 
         // ---------- 列选择器事件绑定 ----------
-        toggleColumnSelectorBtn.addEventListener('click', () => {
-            if (currentColumns.length === 0) {
-                alert('请先加载数据');
-                return;
-            }
-            columnSelector.style.display = columnSelector.style.display === 'none' ? 'block' : 'none';
+        toggleColumnSelectorBtn.addEventListener("click", () => {
+          if (currentColumns.length === 0) {
+            alert("请先加载数据");
+            return;
+          }
+          columnSelector.style.display =
+            columnSelector.style.display === "none" ? "block" : "none";
         });
 
-        selectAllBtn.addEventListener('click', () => {
-            columnList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = true;
+        selectAllBtn.addEventListener("click", () => {
+          columnList
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((cb) => {
+              cb.checked = true;
             });
-            updateSelectedCount();
+          updateSelectedCount();
         });
 
-        selectNoneBtn.addEventListener('click', () => {
-            columnList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = false;
+        selectNoneBtn.addEventListener("click", () => {
+          columnList
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((cb) => {
+              cb.checked = false;
             });
-            updateSelectedCount();
+          updateSelectedCount();
         });
 
-        copyColumnsBtn.addEventListener('click', async () => {
-            const selectedColumns = getSelectedColumns();
-            if (selectedColumns.length === 0) {
-                alert('请先选择要复制的列');
-                return;
-            }
-            const text = selectedColumns.join('\n');
-            try {
-                await navigator.clipboard.writeText(text);
-                alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
-            } catch (err) {
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
-            }
+        copyColumnsBtn.addEventListener("click", async () => {
+          const selectedColumns = getSelectedColumns();
+          if (selectedColumns.length === 0) {
+            alert("请先选择要复制的列");
+            return;
+          }
+          const text = selectedColumns.join("\n");
+          try {
+            await navigator.clipboard.writeText(text);
+            alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
+          } catch (err) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            alert(`✅ 已复制 ${selectedColumns.length} 个列名`);
+          }
         });
 
-        exportColumnsBtn.addEventListener('click', () => {
-            const selectedColumns = getSelectedColumns();
-            if (selectedColumns.length === 0) {
-                alert('请先选择要导出的列');
-                return;
-            }
-            const config = {
-                columns: selectedColumns,
-                timestamp: new Date().toISOString(),
-                totalColumns: currentColumns.length
-            };
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `column_config_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+        exportColumnsBtn.addEventListener("click", () => {
+          const selectedColumns = getSelectedColumns();
+          if (selectedColumns.length === 0) {
+            alert("请先选择要导出的列");
+            return;
+          }
+          const config = {
+            columns: selectedColumns,
+            timestamp: new Date().toISOString(),
+            totalColumns: currentColumns.length,
+          };
+          const blob = new Blob([JSON.stringify(config, null, 2)], {
+            type: "application/json",
+          });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          link.setAttribute("href", url);
+          link.setAttribute(
+            "download",
+            `column_config_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`,
+          );
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
         });
 
-        applyColumnsBtn.addEventListener('click', () => {
-            const selectedColumns = getSelectedColumns();
-            if (selectedColumns.length === 0) {
-                alert('请至少选择一列');
-                return;
-            }
-            currentColumns = selectedColumns;
-            sortState = { column: null, direction: null };
-            renderTable();
-            columnSelector.style.display = 'none';
-            alert(`✅ 已应用 ${selectedColumns.length} 个列`);
+        applyColumnsBtn.addEventListener("click", () => {
+          const selectedColumns = getSelectedColumns();
+          if (selectedColumns.length === 0) {
+            alert("请至少选择一列");
+            return;
+          }
+          currentColumns = selectedColumns;
+          sortState = { column: null, direction: null };
+          renderTable();
+          columnSelector.style.display = "none";
+          alert(`✅ 已应用 ${selectedColumns.length} 个列`);
         });
 
         // ---------- 复制表格 (HTML格式 + 纯文本) ----------
         function getTableText(includeHeader = true) {
-            const showIndex = addIndexCheck.checked;
-            let rows = [];
-            
-            // 表头
-            if (includeHeader) {
-                let headerRow = [];
-                if (showIndex) headerRow.push('#');
-                headerRow.push(...currentColumns);
-                rows.push(headerRow.join('\t'));
-            }
-            
-            // 数据
-            filteredData.forEach((obj, idx) => {
-                let row = [];
-                if (showIndex) row.push(idx + 1);
-                currentColumns.forEach(col => {
-                    row.push(getCellValue(obj, col));
-                });
-                rows.push(row.join('\t'));
+          const showIndex = addIndexCheck.checked;
+          let rows = [];
+
+          // 表头
+          if (includeHeader) {
+            let headerRow = [];
+            if (showIndex) headerRow.push("#");
+            headerRow.push(...currentColumns);
+            rows.push(headerRow.join("\t"));
+          }
+
+          // 数据
+          filteredData.forEach((obj, idx) => {
+            let row = [];
+            if (showIndex) row.push(idx + 1);
+            currentColumns.forEach((col) => {
+              row.push(getCellValue(obj, col));
             });
-            return rows.join('\n');
+            rows.push(row.join("\t"));
+          });
+          return rows.join("\n");
         }
 
-        copyTableBtn.addEventListener('click', async () => {
-            if (filteredData.length === 0 && currentColumns.length === 0) {
-                alert('没有数据可复制');
-                return;
-            }
-            const text = getTableText(true);
-            try {
-                await navigator.clipboard.writeText(text);
-                alert('✅ 表格已复制 (制表符分隔)');
-            } catch (err) {
-                // 降级
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                alert('✅ 表格已复制');
-            }
+        copyTableBtn.addEventListener("click", async () => {
+          if (filteredData.length === 0 && currentColumns.length === 0) {
+            alert("没有数据可复制");
+            return;
+          }
+          const text = getTableText(true);
+          try {
+            await navigator.clipboard.writeText(text);
+            alert("✅ 表格已复制 (制表符分隔)");
+          } catch (err) {
+            // 降级
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            alert("✅ 表格已复制");
+          }
         });
 
         // ---------- 导出 XLSX ----------
         function exportToXLSX() {
-            if (filteredData.length === 0 && currentColumns.length === 0) {
-                alert('没有数据可导出');
-                return;
-            }
-            
-            const showIndex = addIndexCheck.checked;
-            
-            // 创建工作簿
-            const wb = XLSX.utils.book_new();
-            
-            // 准备数据
-            const data = [];
-            
-            // 添加表头
-            const headerRow = [];
-            if (showIndex) headerRow.push('#');
-            headerRow.push(...currentColumns);
-            data.push(headerRow);
-            
-            // 添加数据行
-            filteredData.forEach((obj, idx) => {
-                const row = [];
-                if (showIndex) row.push(idx + 1);
-                currentColumns.forEach(col => {
-                    const val = getCellValue(obj, col);
-                    row.push(val);
-                });
-                data.push(row);
+          if (filteredData.length === 0 && currentColumns.length === 0) {
+            alert("没有数据可导出");
+            return;
+          }
+
+          const showIndex = addIndexCheck.checked;
+
+          // 创建工作簿
+          const wb = XLSX.utils.book_new();
+
+          // 准备数据
+          const data = [];
+
+          // 添加表头
+          const headerRow = [];
+          if (showIndex) headerRow.push("#");
+          headerRow.push(...currentColumns);
+          data.push(headerRow);
+
+          // 添加数据行
+          filteredData.forEach((obj, idx) => {
+            const row = [];
+            if (showIndex) row.push(idx + 1);
+            currentColumns.forEach((col) => {
+              const val = getCellValue(obj, col);
+              row.push(val);
             });
-            
-            // 创建工作表
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            
-            // 设置列宽
-            const colWidths = [];
-            if (showIndex) colWidths.push({ wch: 8 }); // 序号列宽度
-            currentColumns.forEach(() => colWidths.push({ wch: 20 })); // 数据列宽度
-            ws['!cols'] = colWidths;
-            
-            // 添加工作表到工作簿
-            XLSX.utils.book_append_sheet(wb, ws, '数据表');
-            
-            // 生成文件名
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            const filename = `json_table_${timestamp}.xlsx`;
-            
-            // 导出文件
-            XLSX.writeFile(wb, filename);
+            data.push(row);
+          });
+
+          // 创建工作表
+          const ws = XLSX.utils.aoa_to_sheet(data);
+
+          // 设置列宽
+          const colWidths = [];
+          if (showIndex) colWidths.push({ wch: 8 }); // 序号列宽度
+          currentColumns.forEach(() => colWidths.push({ wch: 20 })); // 数据列宽度
+          ws["!cols"] = colWidths;
+
+          // 添加工作表到工作簿
+          XLSX.utils.book_append_sheet(wb, ws, "数据表");
+
+          // 生成文件名
+          const timestamp = new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace(/:/g, "-");
+          const filename = `json_table_${timestamp}.xlsx`;
+
+          // 导出文件
+          XLSX.writeFile(wb, filename);
         }
 
-        exportXlsxBtn.addEventListener('click', exportToXLSX);
+        exportXlsxBtn.addEventListener("click", exportToXLSX);
+
+        // ---------- 大文件模式：JSON → XLSX (Web Worker，不卡 UI) ----------
+        const pickJsonBtn = document.getElementById("pick-json-btn");
+        const jsonFileInput = document.getElementById("json-file-input");
+        const bigfileStatus = document.getElementById("bigfile-status");
+        const progressWrap = document.getElementById("progress-wrap");
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+
+        // Worker 源码：在后台完成 JSON 解析 + XLSX 生成，避免主线程卡死
+        const workerSrc = `
+importScripts('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js');
+
+self.onmessage = function(e) {
+    const data = e.data;
+    if (data.type !== 'process') return;
+    try {
+        self.postMessage({ type: 'progress', stage: '解析 JSON 中...', percent: 5 });
+        const arr = JSON.parse(data.text);
+        if (!Array.isArray(arr)) {
+            self.postMessage({ type: 'error', message: 'JSON 根节点必须是数组' });
+            return;
+        }
+        const total = arr.length;
+        self.postMessage({ type: 'progress', stage: '提取字段...', percent: 25, total: total });
+
+        // 合并所有对象的 key 作为表头
+        const keySet = {};
+        for (let i = 0; i < total; i++) {
+            const obj = arr[i];
+            if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                for (const k in obj) {
+                    if (Object.prototype.hasOwnProperty.call(obj, k)) keySet[k] = true;
+                }
+            }
+        }
+        const keys = Object.keys(keySet).sort();
+
+        self.postMessage({ type: 'progress', stage: '构建数据行...', percent: 40, total: total });
+        const rows = [keys];
+        for (let i = 0; i < total; i++) {
+            const obj = arr[i] || {};
+            const row = new Array(keys.length);
+            for (let j = 0; j < keys.length; j++) {
+                const v = obj[keys[j]];
+                if (v === null || v === undefined) row[j] = '';
+                else if (typeof v === 'object') row[j] = JSON.stringify(v);
+                else row[j] = v;
+            }
+            rows.push(row);
+            // 每 8192 行汇报一次进度
+            if ((i & 8191) === 0) {
+                self.postMessage({
+                    type: 'progress',
+                    stage: '构建数据行...',
+                    percent: 40 + Math.floor((i / total) * 35),
+                    current: i,
+                    total: total
+                });
+            }
+        }
+
+        self.postMessage({ type: 'progress', stage: '生成工作表...', percent: 78 });
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+        self.postMessage({ type: 'progress', stage: '写入 XLSX 文件...', percent: 90 });
+        const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+        // 用 Transferable 传回，零拷贝
+        self.postMessage(
+            { type: 'done', buffer: out.buffer, rows: total, cols: keys.length },
+            [out.buffer]
+        );
+    } catch (err) {
+        self.postMessage({ type: 'error', message: err.message });
+    }
+};
+`;
+
+        let bigFileWorker = null;
+        function getBigFileWorker() {
+          if (!bigFileWorker) {
+            const blob = new Blob([workerSrc], {
+              type: "application/javascript",
+            });
+            const url = URL.createObjectURL(blob);
+            bigFileWorker = new Worker(url);
+            bigFileWorker.onmessage = (e) => {
+              const msg = e.data;
+              if (msg.type === "progress") {
+                progressWrap.style.display = "block";
+                progressBar.style.width = msg.percent + "%";
+                let extra =
+                  msg.total != null && msg.current != null
+                    ? " (已处理 " + msg.current + "/" + msg.total + " 行)"
+                    : msg.total != null
+                      ? " (共 " + msg.total + " 行)"
+                      : "";
+                progressText.textContent =
+                  msg.stage + " " + msg.percent + "%" + extra;
+              } else if (msg.type === "done") {
+                progressBar.style.width = "100%";
+                progressText.textContent =
+                  "✅ 完成！共 " +
+                  msg.rows +
+                  " 行 × " +
+                  msg.cols +
+                  " 列，正在下载...";
+                const blob = new Blob([msg.buffer], {
+                  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                const ts = new Date()
+                  .toISOString()
+                  .slice(0, 19)
+                  .replace(/:/g, "-");
+                link.href = url;
+                link.download = "json_export_" + ts + ".xlsx";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                bigfileStatus.innerHTML =
+                  '<i class="far fa-check-circle" style="color:#16a34a;"></i> 导出完成：' +
+                  msg.rows +
+                  " 行 × " +
+                  msg.cols +
+                  " 列";
+              } else if (msg.type === "error") {
+                progressText.textContent = "❌ 错误：" + msg.message;
+                bigfileStatus.innerHTML =
+                  '<i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> 处理失败：' +
+                  msg.message;
+              }
+            };
+            bigFileWorker.onerror = (e) => {
+              progressText.textContent =
+                "❌ Worker 错误：" + (e.message || "未知错误");
+              bigfileStatus.innerHTML =
+                '<i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> Worker 加载失败，请检查网络 (需加载 SheetJS CDN)';
+            };
+          }
+          return bigFileWorker;
+        }
+
+        pickJsonBtn.addEventListener("click", () => jsonFileInput.click());
+
+        jsonFileInput.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          bigfileStatus.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> 正在读取文件：' +
+            file.name +
+            " (" +
+            (file.size / 1024).toFixed(1) +
+            " KB)";
+          progressWrap.style.display = "block";
+          progressBar.style.width = "0%";
+          progressText.textContent = "读取文件中...";
+          try {
+            const text = await file.text();
+            bigfileStatus.innerHTML =
+              '<i class="fas fa-cog fa-spin"></i> 文件已读取，后台 Worker 处理中...';
+            getBigFileWorker().postMessage({ type: "process", text: text });
+          } catch (err) {
+            bigfileStatus.innerHTML =
+              '<i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> 读取失败：' +
+              err.message;
+          }
+          // 清空 value 以便重复选择同一文件
+          e.target.value = "";
+        });
 
         // ---------- 初始化：加载默认示例 ----------
         (function initialize() {
-            // 使用默认textarea内容
-            refreshFromJSON();
+          // 使用默认textarea内容
+          refreshFromJSON();
         })();
 
         // 额外优化：调整表格容器滚动时保持表头 (sticky已做)
         // 修复空状态
-    })();
-</script>
-<!-- 确保图标库已加载 -->
-</body>
+      })();
+    </script>
+    <!-- 确保图标库已加载 -->
+  </body>
 </html>
