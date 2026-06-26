@@ -1110,10 +1110,13 @@ self.onmessage = function(e) {
         self.postMessage({ type: 'progress', stage: '写入 XLSX 文件...', percent: 90 });
         const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
 
+        // XLSX.write 返回 Uint8Array，获取其 ArrayBuffer
+        const arrayBuffer = out instanceof Uint8Array ? out.buffer : new Uint8Array(out).buffer;
+
         // 用 Transferable 传回，零拷贝
         self.postMessage(
-            { type: 'done', buffer: out.buffer, rows: total, cols: keys.length },
-            [out.buffer]
+            { type: 'done', buffer: arrayBuffer, rows: total, cols: keys.length },
+            [arrayBuffer]
         );
     } catch (err) {
         self.postMessage({ type: 'error', message: err.message });
